@@ -1,0 +1,154 @@
+# =====================================================
+# ADHI AI COMPLIANCE - GIT ATTRIBUTES
+# Configure line endings and file handling
+# =====================================================
+
+# Set default behavior to automatically normalize line endings
+* text=auto
+
+# Explicitly declare text files you want to always be normalized and converted
+# to native line endings on checkout
+*.md text
+*.txt text
+*.json text
+*.js text eol=lf
+*.jsx text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.html text eol=lf
+*.xml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.py text eol=lf
+*.sql text eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Configuration files
+.env* text
+.gitignore text
+.gitattributes text
+*.ini text
+*.cfg text
+*.conf text
+*.config text
+
+# Documentation
+*.rst text
+*.tex text
+LICENSE text
+CHANGELOG text
+AUTHORS text
+CONTRIBUTORS text
+
+# Declare files that will always have CRLF line endings on checkout
+*.sln text eol=crlf
+*.vcxproj text eol=crlf
+
+# Denote all files that are truly binary and should not be modified
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+*.webp binary
+*.bmp binary
+*.tiff binary
+
+# Archives
+*.zip binary
+*.tar binary
+*.gz binary
+*.7z binary
+*.rar binary
+
+# Fonts
+*.woff binary
+*.woff2 binary
+*.eot binary
+*.ttf binary
+*.otf binary
+
+# Documents
+*.pdf binary
+*.doc binary
+*.docx binary
+*.xls binary
+*.xlsx binary
+*.ppt binary
+*.pptx binary
+
+# Audio/Video
+*.mp3 binary
+*.mp4 binary
+*.wav binary
+*.mov binary
+*.avi binary
+
+# Database files
+*.db binary
+*.sqlite binary
+*.sqlite3 binary
+
+# Executables
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+
+# Python compiled files
+*.pyc binary
+*.pyo binary
+*.pyd binary
+
+# Node modules (treat as binary to avoid diffs)
+package-lock.json binary
+yarn.lock binary
+
+# Large data files (treat as binary, use Git LFS if needed)
+*.csv binary
+*.parquet binary
+*.h5 binary
+*.hdf5 binary
+
+# Model files (AI/ML models - use Git LFS)
+*.pkl binary
+*.pickle binary
+*.joblib binary
+*.h5 binary
+*.pb binary
+*.onnx binary
+*.pt binary
+*.pth binary
+*.safetensors binary
+
+# Security - ensure these are never committed
+*.key binary
+*.pem binary
+*.crt binary
+*.p12 binary
+*.pfx binary
+
+# IDE files
+*.code-workspace text
+
+# Git LFS tracking for large files
+# (Uncomment if you want to use Git LFS)
+# *.zip filter=lfs diff=lfs merge=lfs -text
+# *.pdf filter=lfs diff=lfs merge=lfs -text
+# *.pkl filter=lfs diff=lfs merge=lfs -text
+# *.h5 filter=lfs diff=lfs merge=lfs -text
+# *.db filter=lfs diff=lfs merge=lfs -text
+
+# Export ignore (files not included in git archive)
+.gitattributes export-ignore
+.gitignore export-ignore
+.github export-ignore
+docs/development export-ignore
+tests export-ignore
+*.test.* export-ignore

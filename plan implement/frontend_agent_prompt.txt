@@ -1,0 +1,103 @@
+You are a senior frontend engineer + designer making Adhi Compliance production-ready and visually stunning.
+
+Read ALL files: app/*.tsx, app/**/*.tsx, components/*.tsx, lib/*.ts, next.config.ts, package.json, .env.local, globals.css
+
+BRAND THEME (rootedai.co.in):
+- Background: rgb(5,5,5) near-black with dotted grid pattern
+- Cards: glassmorphism (rgba(255,255,255,0.06) with backdrop-blur-xl)
+- Primary accent: rgb(59,130,246) blue
+- Purple accent: rgb(168,85,247)
+- Text: white primary, rgb(163,163,163) secondary
+- Fonts: Outfit (headings, bold italic), Montserrat (body) via Google Fonts
+- Pill-shaped buttons, rounded-2xl cards
+- Logo: ROOTEDAI all caps, wide letter-spacing
+
+DESIGN PHILOSOPHY:
+- BOLD, not timid. Large typography jumps (3x+), not incremental
+- Anti-AI-slop: no generic gradients, no stock-photo vibes
+- Glassmorphism cards with subtle glow effects on hover
+- Framer Motion animations: fade-in on scroll, staggered list animations, smooth page transitions
+- Data visualization: clean, minimal charts with brand colors
+- Micro-interactions: button hover scales, card lift shadows, badge pulse on critical items
+- Dark luxury tech aesthetic — like Linear, Vercel, or Raycast dashboards
+
+TASKS (do ALL of these):
+
+1. FIX ALL BROKEN IMPORTS:
+   Search every .tsx and .ts file. Fix any import paths that have a leading space before @/ in the from clause. The correct pattern is: from "@/..." with no space.
+
+2. FIX next.config.ts PROXY:
+   The rewrite should map /api/v1/* requests to http://127.0.0.1:8000/api/v1/*. Fix the source/destination to avoid double path segments.
+
+3. INSTALL DEPENDENCIES:
+   Run: npm install swr dompurify @types/dompurify framer-motion
+
+4. CREATE lib/fetcher.ts:
+   Generic SWR fetcher that includes Authorization Bearer token from localStorage.
+
+5. CREATE lib/hooks.ts:
+   SWR hooks: useSystems, useSystem(id), useRegulations, useComplianceChecks, useIncidents, useBiasAudits, useDashboardStats, useDashboardRiskDistribution, useRecentActivity
+
+6. CREATE lib/auth.ts:
+   Token management: getToken, setToken, clearToken, isAuthenticated, getAuthHeaders
+
+7. CONNECT ALL PAGES TO REAL API (remove ALL mock data):
+   - app/page.tsx: Dashboard with real stats from SWR hooks. Add Framer Motion staggered fade-in for stat cards. Animated compliance score circle.
+   - app/systems/page.tsx: Real data, loading skeletons, staggered row animations
+   - app/systems/[id]/page.tsx: Real data. Fix params typing (not Promise, just {params: {id: string}}). Compliance checklist with animated checkmarks.
+   - app/regulations/page.tsx: Real data with search/filter
+   - app/incidents/page.tsx: Real data, status badges with pulse animation on critical
+   - app/bias/page.tsx: Real upload to API, real audit results. Fix MetricBar (replace ??? with proper < > operators)
+   - app/chat/page.tsx: Real POST to /api/v1/query. Sanitize AI response with DOMPurify. Typing indicator animation.
+   - app/reports/page.tsx: Trigger real report generation via API
+
+8. CREATE app/login/page.tsx:
+   Beautiful login page matching RootedAI brand. Large ROOTEDAI logo, glassmorphism card, email+password fields, login button with loading state, sign up link. POST to /api/v1/auth/login, store JWT.
+
+9. CREATE components/AuthGuard.tsx:
+   Check auth state, redirect to /login if not authenticated. Wrap in layout.tsx.
+
+10. CREATE components/Skeleton.tsx:
+    Reusable skeleton loaders with shimmer animation, matching glassmorphism dark theme.
+
+11. CREATE components/ErrorState.tsx:
+    Friendly error message with retry button, matching brand.
+
+12. MAKE FULLY RESPONSIVE (mobile-first):
+    - Sidebar: collapsible hamburger on mobile, slide-in drawer with backdrop
+    - Dashboard: stack cards vertically on mobile, 2-col on tablet, 4-col on desktop
+    - Tables: horizontal scroll wrapper on mobile
+    - All pages: proper spacing for sm/md/lg breakpoints
+
+13. ADD FRAMER MOTION ANIMATIONS everywhere:
+    - Page transitions: fade + slide up
+    - Stat cards: staggered entrance
+    - Lists/tables: staggered row fade-in
+    - Modals: scale + fade
+    - Buttons: whileTap scale(0.95), whileHover scale(1.02)
+    - Compliance score circle: animated stroke-dasharray
+    - Charts: animated bar growth
+
+14. FIX DESIGN CONSISTENCY:
+    - settings/page.tsx: refactor to use CSS variables
+    - Use GlassCard component (components/ui/GlassCard.tsx) everywhere
+    - Consistent spacing, typography, color usage
+
+15. ACCESSIBILITY:
+    - aria-labels on all icon buttons
+    - role=dialog + aria-modal on all modals/drawers
+    - Focus trapping in modals
+    - Escape key closes modals
+    - Skip navigation link
+    - Color contrast compliance (WCAG AA)
+
+16. UPDATE components/Sidebar.tsx:
+    - Add ROOTEDAI logo at top (bold, wide tracking)
+    - Active route indicator with animated blue pill
+    - Collapse animation for mobile
+    - User avatar/email at bottom with logout button
+
+Commit with message: feat: production-ready frontend - real API, auth, SWR, animations, responsive, a11y
+
+When completely finished, run this command:
+openclaw system event --text "Done: Frontend production-ready - real API, auth, SWR, Framer Motion, responsive, a11y, design polish" --mode now

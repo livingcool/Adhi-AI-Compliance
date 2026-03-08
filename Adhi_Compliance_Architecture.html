@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Adhi Compliance — Architecture Document</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+  :root{--bg:rgb(5,5,5);--bg2:rgb(10,10,10);--navy:rgb(15,23,42);--navy2:rgb(2,6,23);--card:rgba(255,255,255,0.06);--card2:rgba(255,255,255,0.1);--blue:rgb(59,130,246);--blue2:rgb(96,165,250);--purple:rgb(168,85,247);--purple2:rgb(192,132,252);--green:rgb(34,197,94);--red:rgb(239,68,68);--teal:rgb(15,76,58);--text:rgb(255,255,255);--text2:rgb(163,163,163);--text3:rgba(255,255,255,0.6);--muted:rgb(148,163,184);--muted2:rgb(203,213,225);--border:rgba(255,255,255,0.08)}
+  *{margin:0;padding:0;box-sizing:border-box}
+  @page{size:A4;margin:18mm 16mm 22mm 16mm}
+  body{font-family:'Montserrat','Inter',system-ui,sans-serif;background:var(--bg);color:var(--text2);font-size:10pt;line-height:1.7;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background-image:radial-gradient(rgba(59,130,246,0.15) 1px,transparent 1px);background-size:24px 24px;pointer-events:none;z-index:0;opacity:0.4}
+
+  /* Cover */
+  .cover{height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;page-break-after:always;position:relative;overflow:hidden;background:linear-gradient(160deg,var(--bg) 0%,var(--navy2) 40%,rgb(23,37,84) 70%,var(--navy) 100%)}
+  .cover::before{content:'';position:absolute;top:-100px;left:-100px;width:400px;height:400px;border:1px solid rgba(255,255,255,0.04);border-radius:0;transform:rotate(45deg);background:transparent;box-shadow:80px 80px 0 rgba(255,255,255,0.02),160px 160px 0 rgba(255,255,255,0.01)}
+  .cover::after{content:'';position:absolute;bottom:-80px;right:-80px;width:350px;height:350px;border:1px solid rgba(59,130,246,0.06);transform:rotate(15deg)}
+  .cover .logo{font-family:'Outfit',sans-serif;font-size:11pt;font-weight:700;letter-spacing:6px;text-transform:uppercase;color:var(--text);margin-bottom:60px;position:relative}
+  .cover h1{font-family:'Outfit',sans-serif;font-size:48pt;font-weight:900;font-style:italic;color:var(--text);letter-spacing:-1px;position:relative;line-height:1.1}
+  .cover h1 span{background:linear-gradient(135deg,var(--blue),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .cover .tagline{font-size:13pt;color:var(--text3);margin-top:16px;font-weight:300;letter-spacing:1px}
+  .cover .doc-type{font-family:'Outfit',sans-serif;font-size:10pt;color:var(--muted);margin-top:50px;font-weight:500;text-transform:uppercase;letter-spacing:5px;padding:10px 28px;border:1px solid var(--border);border-radius:50px}
+  .cover .meta{margin-top:50px;color:var(--muted);font-size:9pt;line-height:2}
+  .cover .meta strong{color:var(--text)}
+
+  /* TOC */
+  .toc{page-break-after:always;padding-top:40px;position:relative}
+  .toc h2{font-family:'Outfit',sans-serif;font-size:24pt;font-weight:900;font-style:italic;color:var(--text);margin-bottom:30px;border:none;padding:0}
+  .toc-item{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)}
+  .toc-item.major{font-weight:600;color:var(--text)}
+  .toc-item.sub{padding-left:22px;color:var(--muted);font-size:9.5pt}
+
+  /* Headings */
+  h2{font-family:'Outfit',sans-serif;font-size:22pt;font-weight:900;font-style:italic;color:var(--text);margin-top:45px;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid var(--blue);page-break-after:avoid}
+  h3{font-family:'Outfit',sans-serif;font-size:13pt;font-weight:700;color:var(--text);margin-top:28px;margin-bottom:10px;page-break-after:avoid}
+  h4{font-family:'Outfit',sans-serif;font-size:11pt;font-weight:600;color:var(--blue2);margin-top:20px;margin-bottom:8px}
+
+  p{margin-bottom:10px;position:relative}
+  .pb{page-break-before:always}
+  strong{color:var(--text)}
+
+  /* Tables */
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:9pt}
+  th{background:linear-gradient(135deg,var(--blue),var(--purple));color:var(--text);font-weight:600;text-align:left;padding:9px 11px;font-family:'Outfit',sans-serif}
+  td{padding:7px 11px;border-bottom:1px solid var(--border)}
+  tr:nth-child(even) td{background:var(--card)}
+
+  /* Diagram */
+  .diagram{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin:16px 0;font-family:'JetBrains Mono',monospace;font-size:8pt;line-height:1.5;white-space:pre;overflow-x:auto;color:var(--blue2);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+
+  code{font-family:'JetBrains Mono',monospace;background:var(--card2);padding:1px 6px;border-radius:4px;font-size:8.5pt;color:var(--blue2)}
+
+  /* Info box */
+  .info{background:rgba(59,130,246,0.08);border-left:3px solid var(--blue);padding:13px 18px;margin:16px 0;border-radius:0 8px 8px 0}
+
+  ul,ol{margin:8px 0 12px 20px}
+  li{margin-bottom:4px}
+
+  .badge{display:inline-block;padding:2px 10px;border-radius:50px;font-size:7.5pt;font-weight:700;text-transform:uppercase;font-family:'Outfit',sans-serif;letter-spacing:0.5px}
+  .bg{background:var(--green);color:var(--bg)}
+  .bb{background:var(--blue);color:var(--text)}
+  .by{background:rgb(234,179,8);color:var(--bg)}
+  .br{background:var(--red);color:var(--text)}
+
+  .footer{margin-top:60px;text-align:center;color:var(--muted);font-size:8pt;border-top:1px solid var(--border);padding-top:15px}
+  .footer .rootedai{font-family:'Outfit',sans-serif;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--text3);font-size:9pt}
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="logo">ROOTEDAI</div>
+  <h1>Adhi <span>Compliance</span></h1>
+  <div class="tagline">AI Compliance, Automated.</div>
+  <div class="doc-type">Detailed Architecture Document</div>
+  <div class="meta">
+    <strong>RootedAI</strong> — Engineering Intelligence &amp; Enterprise Automation<br>
+    Version 1.0 &nbsp;·&nbsp; February 2026 &nbsp;·&nbsp; Confidential<br>
+    Prepared by Ganesh Khovalan, Founder &amp; CEO
+  </div>
+</div>
+
+<!-- TOC -->
+<div class="toc">
+  <h2>Table of Contents</h2>
+  <div class="toc-item major"><span>1. Executive Summary</span></div>
+  <div class="toc-item major"><span>2. System Architecture Overview</span></div>
+  <div class="toc-item major"><span>3. Frontend Architecture</span></div>
+  <div class="toc-item sub"><span>3.1 Application Structure &amp; Key Pages</span></div>
+  <div class="toc-item sub"><span>3.2 Component Hierarchy &amp; State Management</span></div>
+  <div class="toc-item sub"><span>3.3 Design System</span></div>
+  <div class="toc-item major"><span>4. Backend Architecture</span></div>
+  <div class="toc-item sub"><span>4.1 FastAPI Service Layer &amp; API Routes</span></div>
+  <div class="toc-item sub"><span>4.2 Authentication &amp; Authorization</span></div>
+  <div class="toc-item sub"><span>4.3 Background Task Processing</span></div>
+  <div class="toc-item major"><span>5. Data Architecture</span></div>
+  <div class="toc-item sub"><span>5.1 Complete Database Schema</span></div>
+  <div class="toc-item sub"><span>5.2 Vector Store &amp; Data Flow</span></div>
+  <div class="toc-item major"><span>6. AI/ML Architecture</span></div>
+  <div class="toc-item sub"><span>6.1 LLM Integration — Google Gemini</span></div>
+  <div class="toc-item sub"><span>6.2 Risk Classification Engine</span></div>
+  <div class="toc-item sub"><span>6.3 Bias Detection &amp; Embedding Pipeline</span></div>
+  <div class="toc-item major"><span>7. Compliance Engine Architecture</span></div>
+  <div class="toc-item sub"><span>7.1 Regulation Loader &amp; Auto-Classification</span></div>
+  <div class="toc-item sub"><span>7.2 Continuous Monitoring &amp; Incident Reporting</span></div>
+  <div class="toc-item sub"><span>7.3 Cross-Jurisdiction Mapper</span></div>
+  <div class="toc-item major"><span>8. Integration Architecture</span></div>
+  <div class="toc-item major"><span>9. Infrastructure &amp; Deployment</span></div>
+  <div class="toc-item major"><span>10. Technology Stack Summary</span></div>
+</div>
+
+<!-- 1 -->
+<div class="pb"></div>
+<h2>1. Executive Summary</h2>
+<p><strong>Adhi Compliance</strong> is an AI-powered compliance management platform developed by <strong>RootedAI</strong> that enables organizations deploying artificial intelligence to navigate the rapidly evolving global regulatory landscape with confidence.</p>
+<p>As AI regulation intensifies — the EU AI Act mandating fines up to <strong>€35 million</strong>, over <strong>700 AI-related bills</strong> across 45 US states, and emerging frameworks in India and China — organizations face an unprecedented compliance burden with virtually zero purpose-built infrastructure.</p>
+<p>Adhi Compliance provides:</p>
+<ul>
+  <li><strong>Automated Risk Classification</strong> — auto-classify AI systems per EU AI Act risk tiers (Unacceptable, High, Limited, Minimal) and other jurisdictional frameworks</li>
+  <li><strong>Continuous Compliance Monitoring</strong> — real-time tracking across EU, US, India, and China regulatory regimes with proactive alerting</li>
+  <li><strong>Bias &amp; Fairness Auditing</strong> — automated bias detection in AI model outputs using statistical and ML methods</li>
+  <li><strong>Transparency Documentation</strong> — automated model cards, data sheets, and impact assessments</li>
+  <li><strong>Incident Reporting</strong> — streamlined EU AI Act Article 62 workflows with deadline tracking</li>
+  <li><strong>Cross-Jurisdiction Mapping</strong> — unified compliance view across multiple regulatory regimes</li>
+</ul>
+<div class="info">
+  <strong>Heritage:</strong> Adhi Compliance evolved from a multimodal RAG system capable of ingesting video, audio, PDF, and image data for semantic search. This ingestion pipeline is retained as foundation for processing complex regulatory documents and audit artifacts.
+</div>
+
+<!-- 2 -->
+<div class="pb"></div>
+<h2>2. System Architecture Overview</h2>
+<p>The platform follows a modern three-tier architecture designed for horizontal scalability and multi-tenant SaaS deployment.</p>
+
+<div class="diagram">
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          CLIENT LAYER                                   │
+│                                                                         │
+│   ┌──────────────┐   ┌───────────────┐   ┌──────────────────────────┐  │
+│   │  Next.js 16  │   │  Mobile PWA   │   │  External API Consumers  │  │
+│   │  Web App     │   │  (Future)     │   │  (CI/CD, Webhooks)       │  │
+│   └──────┬───────┘   └───────┬───────┘   └────────────┬─────────────┘  │
+└──────────┼───────────────────┼────────────────────────┼────────────────┘
+           │                   │                        │
+           ▼                   ▼                        ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    API GATEWAY  /  AUTH LAYER                            │
+│            Supabase Auth  ·  JWT Tokens  ·  Row-Level Security          │
+└──────────────────────────────────┬──────────────────────────────────────┘
+                                   │
+           ┌───────────────────────┼───────────────────────┐
+           ▼                       ▼                       ▼
+┌────────────────────┐  ┌──────────────────┐  ┌────────────────────────┐
+│   FastAPI Core     │  │  Celery Workers  │  │  Compliance Engine     │
+│                    │  │                  │  │                        │
+│  · REST API        │  │  · Reg loader    │  │  · Risk classifier     │
+│  · WebSocket       │  │  · Bias audit    │  │  · Monitoring daemon   │
+│  · Rate limiting   │  │  · Report gen    │  │  · Cross-border mapper │
+│  · Auth middleware  │  │  · Embeddings   │  │  · Incident mgmt       │
+└─────────┬──────────┘  └────────┬─────────┘  └───────────┬────────────┘
+          │                      │                        │
+          ▼                      ▼                        ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           DATA LAYER                                    │
+│                                                                         │
+│   ┌───────────────┐  ┌───────────────┐  ┌──────────────────────────┐   │
+│   │  Supabase     │  │  pgvector     │  │  Redis                   │   │
+│   │  PostgreSQL   │  │  (Embeddings) │  │  (Cache · Queue · Rate)  │   │
+│   └───────────────┘  └───────────────┘  └──────────────────────────┘   │
+│   ┌───────────────┐  ┌───────────────┐                                 │
+│   │  S3 / Supabase│  │  CDN          │                                 │
+│   │  Storage      │  │  (Assets)     │                                 │
+│   └───────────────┘  └───────────────┘                                 │
+└─────────────────────────────────────────────────────────────────────────┘
+</div>
+
+<h3>Architectural Principles</h3>
+<ul>
+  <li><strong>API-First</strong> — all functionality exposed via versioned REST endpoints; the frontend is a first-party consumer</li>
+  <li><strong>Event-Driven</strong> — long-running tasks handled asynchronously via Celery + Redis</li>
+  <li><strong>Multi-Tenant Isolation</strong> — Row-Level Security at database level for complete data isolation</li>
+  <li><strong>AI-Native</strong> — LLM and embedding models are core infrastructure, not bolt-ons</li>
+  <li><strong>Regulation-as-Data</strong> — frameworks are structured, versioned, queryable datasets</li>
+</ul>
+
+<!-- 3 -->
+<div class="pb"></div>
+<h2>3. Frontend Architecture</h2>
+
+<h3>3.1 Application Structure &amp; Key Pages</h3>
+<p>Built on <strong>Next.js 16</strong> (App Router, React Server Components, TypeScript).</p>
+
+<div class="diagram">
+app/
+├── (auth)/
+│   ├── login/page.tsx              ← Email/OAuth login
+│   ├── register/page.tsx           ← Signup + company creation
+│   └── forgot-password/page.tsx
+├── (dashboard)/
+│   ├── layout.tsx                  ← Sidebar + topbar shell
+│   ├── page.tsx                    ← Main compliance dashboard
+│   ├── ai-systems/
+│   │   ├── page.tsx                ← AI System Registry (list/grid)
+│   │   ├── [id]/page.tsx           ← System detail + compliance
+│   │   └── new/page.tsx            ← Register new AI system
+│   ├── regulations/
+│   │   ├── page.tsx                ← Regulation Library (browse/search)
+│   │   └── [id]/page.tsx           ← Regulation detail + articles
+│   ├── compliance/
+│   │   ├── page.tsx                ← Compliance overview
+│   │   ├── checks/page.tsx         ← Check history + results
+│   │   └── monitor/page.tsx        ← Real-time monitoring
+│   ├── bias-auditor/
+│   │   ├── page.tsx                ← Audit history
+│   │   └── new/page.tsx            ← Configure + run audit
+│   ├── chat/page.tsx               ← Compliance AI assistant (RAG)
+│   ├── incidents/
+│   │   ├── page.tsx                ← Incident log
+│   │   └── new/page.tsx            ← Report (EU AI Act Art. 62)
+│   ├── reports/page.tsx            ← Model cards, PDF/Excel
+│   └── settings/
+│       ├── page.tsx                ← Company profile
+│       ├── team/page.tsx           ← User/role management
+│       └── integrations/page.tsx   ← Webhooks + API keys
+└── layout.tsx                      ← Root layout + providers
+</div>
+
+<h4>Page Breakdown</h4>
+<table>
+  <tr><th>Page</th><th>Purpose</th><th>Key Components</th></tr>
+  <tr><td><strong>Dashboard</strong></td><td>Executive compliance overview</td><td>ComplianceScoreRing, RiskHeatmap, AlertsFeed, SystemStatusGrid</td></tr>
+  <tr><td><strong>AI Systems</strong></td><td>Catalog all deployed AI systems</td><td>SystemCard, RiskBadge, ClassificationWizard, SystemForm</td></tr>
+  <tr><td><strong>Regulations</strong></td><td>Browse &amp; search regulations</td><td>RegulationBrowser, ArticleViewer, ApplicabilityChecker</td></tr>
+  <tr><td><strong>Compliance Chat</strong></td><td>RAG-powered regulatory Q&amp;A</td><td>ChatInterface, SourceCitation, ContextPanel</td></tr>
+  <tr><td><strong>Bias Auditor</strong></td><td>Run &amp; review fairness audits</td><td>AuditConfigForm, MetricsChart, BiasReport, DataUploader</td></tr>
+  <tr><td><strong>Reports</strong></td><td>Generate model cards &amp; exports</td><td>ReportBuilder, PDFPreview, TemplateSelector</td></tr>
+  <tr><td><strong>Incidents</strong></td><td>EU AI Act Article 62 reporting</td><td>IncidentForm, TimelineView, StatusTracker</td></tr>
+  <tr><td><strong>Settings</strong></td><td>Org config, team, integrations</td><td>CompanyForm, InviteModal, WebhookConfig, APIKeyManager</td></tr>
+</table>
+
+<h3>3.2 Component Hierarchy &amp; State Management</h3>
+<div class="diagram">
+App (Root Layout)
+├── AuthProvider (Supabase session)
+│   ├── QueryClientProvider (TanStack Query v5)
+│   │   ├── ThemeProvider (dark mode)
+│   │   │   ├── DashboardLayout
+│   │   │   │   ├── Sidebar (nav, org switcher)
+│   │   │   │   ├── TopBar (search, notifications, user)
+│   │   │   │   └── MainContent (route-specific page)
+│   │   │   └── CommandPalette (⌘K global search)
+│   │   └── ToastProvider
+│   └── RealtimeProvider (Supabase realtime subscriptions)
+</div>
+
+<p><strong>State Management:</strong></p>
+<ul>
+  <li><strong>Server State</strong> — TanStack Query v5: caching, background refetching, optimistic updates</li>
+  <li><strong>Client State</strong> — React Context (auth, theme, sidebar) + Zustand (complex UI state)</li>
+  <li><strong>URL State</strong> — Next.js searchParams for filters, pagination, shareable views</li>
+  <li><strong>Real-time</strong> — Supabase Realtime for live compliance alerts</li>
+</ul>
+
+<h3>3.3 Design System</h3>
+<p>Glassmorphism dark theme built on Tailwind CSS with Framer Motion animations.</p>
+<table>
+  <tr><th>Element</th><th>Specification</th></tr>
+  <tr><td>Primary Background</td><td><code>rgb(5,5,5)</code> with dotted grid overlay</td></tr>
+  <tr><td>Surface Cards</td><td><code>rgba(255,255,255,0.06)</code> + <code>backdrop-blur(12px)</code></td></tr>
+  <tr><td>Primary Accent</td><td><code>rgb(59,130,246)</code> blue → <code>rgb(168,85,247)</code> purple gradients</td></tr>
+  <tr><td>Typography</td><td>Outfit (headings), Montserrat (body), JetBrains Mono (code)</td></tr>
+  <tr><td>Border Radius</td><td>12px cards, 50px pills/buttons, 6px inputs</td></tr>
+  <tr><td>Animations</td><td>Framer Motion: fade-up, spring transitions, number counters</td></tr>
+  <tr><td>Icons</td><td>Lucide React</td></tr>
+  <tr><td>Charts</td><td>Recharts with custom dark theme</td></tr>
+</table>
+
+<!-- 4 -->
+<div class="pb"></div>
+<h2>4. Backend Architecture</h2>
+
+<h3>4.1 FastAPI Service Layer &amp; API Routes</h3>
+<div class="diagram">
+backend/
+├── app/
+│   ├── main.py                 ← FastAPI factory, middleware, CORS
+│   ├── config.py               ← pydantic-settings env config
+│   ├── deps.py                 ← Dependency injection (DB, auth)
+│   ├── routers/
+│   │   ├── auth.py             ← /api/v1/auth/*
+│   │   ├── companies.py        ← /api/v1/companies/*
+│   │   ├── ai_systems.py       ← /api/v1/ai-systems/*
+│   │   ├── regulations.py      ← /api/v1/regulations/*
+│   │   ├── compliance.py       ← /api/v1/compliance/*
+│   │   ├── bias_audits.py      ← /api/v1/bias-audits/*
+│   │   ├── incidents.py        ← /api/v1/incidents/*
+│   │   ├── reports.py          ← /api/v1/reports/*
+│   │   ├── chat.py             ← /api/v1/chat/*
+│   │   └── webhooks.py         ← /api/v1/webhooks/*
+│   ├── models/                 ← SQLAlchemy ORM models
+│   ├── schemas/                ← Pydantic request/response
+│   ├── services/               ← Business logic layer
+│   ├── compliance_engine/      ← Core compliance logic
+│   └── tasks/                  ← Celery task definitions
+├── alembic/                    ← Database migrations
+├── tests/
+└── celery_worker.py            ← Celery entrypoint
+</div>
+
+<h4>Complete API Endpoint Reference</h4>
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+  <tr><td><span class="badge bg">POST</span></td><td><code>/api/v1/auth/register</code></td><td>Register user + company</td></tr>
+  <tr><td><span class="badge bg">POST</span></td><td><code>/api/v1/auth/login</code></td><td>Authenticate → JWT</td></tr>
+  <tr><td><span class="badge bg">POST</span></td><td><code>/api/v1/auth/refresh</code></td><td>Refresh access token</td></tr>
+  <tr><td><span class="badge bb">GET</span></td><td><code>/api/v1/auth/me</code></td><td>Current user profile</td></tr>
+  <tr><td><span class="badge bb">GET</span></td><td><code>/api/v1/companies/{id}</code></td><td>Company profile</td></tr>
+  <tr><td><span class="badge by">PUT</span></td><td><code>/api/v1/companies/{id}</code></td><td>Update company</td></tr>
+  <tr><td><span class="badge bb">GET</span></td><td><code>/api/v1/ai-systems</code></td><td>List AI systems (paginated, filterable)</td></tr>
+  <tr><td><span class="badge bg">POST</span></td><td><code>/api/v1/ai-systems</code></td><td>Register new AI system</td></tr>
+  <tr><td><span class="badge bb">GET</span></td><td><code>/api/v1/ai-systems/{id}</code></td><td>System detail + compliance</td></tr>
+  <tr><td><span class="badge by">PUT</span></td><td><code>/api/v1/ai-systems/{id}</code></td><td>Update system metadata</td></tr>
+  <tr><td><span class="badge br">DEL</span></td><td><code>/api/v1/ai-systems/{id}</code></td><td>Decommission system</td></tr>
+  <tr><td><span class="badge bg">POST</span></td><td><code>/api/v1/ai-systems/{id}/classify</code></td><td>Trigger risk classification</td></tr>
+  <tr><td><span class="badge bb">GET</span></td><td><code>/api/v1/regulations</code></td><td>List regulations (filterable)</td></tr>
+  <tr><td><span class="badge bb">GET</span></td><td><code>/api/v1/regulations/{id}</code></td><td>Regulation detail + articles</td></tr>
+  <tr><td><span class="badge bg">POST</span></td><td><code>/api/v1/regulations/search</code></td><td>Semantic vector search (RAG)</td></tr>
+  <tr><td><span class="badge bg">POST</span></td><td><code>/api/v1/compliance/check</code></td><td>Run compliance check</td></tr>
+  <tr><td><span class="badge bb">GET</span></td><td><code>/api/v1/compliance/status/{sys_id}</code></td><td>Compliance status per system</td></tr>
+  <tr><td><span class="badge bb">GET</span></td><td><code>/api/v1/compliance/dashboard</code></td><td>Aggregated metrics</td></tr>
+  <tr><td><span class="badge bb">GET</span></td><td><code>/api/v1/compliance/deadlines</code></td><td>Upcoming regulatory deadlines</td></tr>
+  <tr><td><span class="badge bg">POST</span></td><td><code>/api/v1/bias-audits</code></td><td>Initiate bias audit (async)</td></tr>
+  <tr><td><span class="badge bb">GET</span></td><td><code>/api/v1/bias-audits/{id}</code></td><td>Audit results</td></tr>
+  <tr><td><span class="badge bb">GET</span></td><td><code>/api/v1/bias-audits</code></td><td>List audits</td></tr>
+  <tr><td><span class="badge bg">POST</span></td><td><code>/api/v1/incidents</code></td><td>Report incident</td></tr>
+  <tr><td><span class="badge bb">GET</span></td><td><code>/api/v1/incidents</code></td><td>List incidents</td></tr>
+  <tr><td><span class="badge by">PUT</span></td><td><code>/api/v1/incidents/{id}</code></td><td>Update incident status</td></tr>
+  <tr><td><span class="badge bg">POST</span></td><td><code>/api/v1/reports/generate</code></td><td>Generate report (async)</td></tr>
+  <tr><td><span class="badge bb">GET</span></td><td><code>/api/v1/reports/{id}/download</code></td><td>Download report file</td></tr>
+  <tr><td><span class="badge bg">POST</span></td><td><code>/api/v1/chat</code></td><td>Compliance chat (streaming)</td></tr>
+  <tr><td><span class="badge bg">POST</span></td><td><code>/api/v1/webhooks</code></td><td>Configure webhook</td></tr>
+  <tr><td><span class="badge bb">GET</span></td><td><code>/api/v1/webhooks</code></td><td>List webhooks</td></tr>
+  <tr><td><span class="badge br">DEL</span></td><td><code>/api/v1/webhooks/{id}</code></td><td>Remove webhook</td></tr>
+</table>
+
+<h3>4.2 Authentication &amp; Authorization</h3>
+<div class="diagram">
+┌──────────┐      ┌───────────────┐      ┌──────────────┐      ┌───────────────┐
+│  Client  │─────▶│ Supabase Auth │─────▶│  JWT Token   │─────▶│   FastAPI     │
+│          │      │  (GoTrue)     │      │  (access +   │      │   Middleware   │
+└──────────┘      └───────────────┘      │   refresh)   │      └───────┬───────┘
+                                         └──────────────┘              │
+                                                                       ▼
+                                                                ┌──────────────┐
+                                                                │  RLS Policy  │
+                                                                │  Enforcement │
+                                                                │              │
+                                                                │ company_id = │
+                                                                │ jwt.company  │
+                                                                └──────────────┘
+</div>
+<ul>
+  <li><strong>Supabase Auth (GoTrue)</strong> — registration, login, password reset, OAuth (Google/GitHub)</li>
+  <li><strong>JWT Tokens</strong> — short-lived access (1h) + refresh tokens, RS256 signed</li>
+  <li><strong>Row-Level Security</strong> — PostgreSQL RLS policies enforce company-level isolation at the DB level</li>
+  <li><strong>RBAC Roles:</strong> <code>owner</code> · <code>admin</code> · <code>analyst</code> · <code>viewer</code> — enforced via FastAPI dependencies</li>
+</ul>
+
+<h3>4.3 Background Task Processing</h3>
+<div class="diagram">
+┌──────────┐      ┌─────────┐      ┌───────────────────────────────────────────┐
+│ FastAPI  │─────▶│  Redis  │─────▶│            Celery Workers                 │
+│ (submit) │      │  Queue  │      │                                           │
+└──────────┘      └─────────┘      │  ┌───────────────┐  ┌─────────────────┐  │
+                                   │  │ regulation    │  │ bias_audit      │  │
+                                   │  │ _loader       │  │ _runner         │  │
+                                   │  └───────────────┘  └─────────────────┘  │
+                                   │  ┌───────────────┐  ┌─────────────────┐  │
+                                   │  │ report        │  │ embedding       │  │
+                                   │  │ _generator    │  │ _pipeline       │  │
+                                   │  └───────────────┘  └─────────────────┘  │
+                                   │  ┌───────────────┐  ┌─────────────────┐  │
+                                   │  │ compliance    │  │ notification    │  │
+                                   │  │ _monitor      │  │ _sender         │  │
+                                   │  └───────────────┘  └─────────────────┘  │
+                                   └───────────────────────────────────────────┘
+</div>
+<p><strong>Celery Beat</strong> (scheduler): continuous compliance monitoring (hourly), regulation update checks (daily), deadline reminders (daily).</p>
+
+<!-- 5 -->
+<div class="pb"></div>
+<h2>5. Data Architecture</h2>
+
+<h3>5.1 Complete Database Schema</h3>
+
+<h4>companies</h4>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Description</th></tr>
+  <tr><td>id</td><td>UUID PK</td><td>Primary key</td></tr>
+  <tr><td>name</td><td>VARCHAR(255)</td><td>Company name</td></tr>
+  <tr><td>industry</td><td>VARCHAR(100)</td><td>Industry sector</td></tr>
+  <tr><td>size</td><td>ENUM</td><td>startup / sme / enterprise</td></tr>
+  <tr><td>headquarters_country</td><td>VARCHAR(2)</td><td>ISO country code</td></tr>
+  <tr><td>operating_jurisdictions</td><td>JSONB</td><td>Array of jurisdiction codes</td></tr>
+  <tr><td>subscription_tier</td><td>ENUM</td><td>starter / growth / enterprise</td></tr>
+  <tr><td>created_at</td><td>TIMESTAMPTZ</td><td>Creation timestamp</td></tr>
+  <tr><td>updated_at</td><td>TIMESTAMPTZ</td><td>Last update</td></tr>
+</table>
+
+<h4>users</h4>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Description</th></tr>
+  <tr><td>id</td><td>UUID PK</td><td>Refs Supabase auth.users</td></tr>
+  <tr><td>company_id</td><td>UUID FK</td><td>→ companies.id</td></tr>
+  <tr><td>email</td><td>VARCHAR(255)</td><td>User email</td></tr>
+  <tr><td>full_name</td><td>VARCHAR(255)</td><td>Display name</td></tr>
+  <tr><td>role</td><td>ENUM</td><td>owner / admin / analyst / viewer</td></tr>
+  <tr><td>is_active</td><td>BOOLEAN</td><td>Account status</td></tr>
+  <tr><td>last_login</td><td>TIMESTAMPTZ</td><td>Last login</td></tr>
+</table>
+
+<h4>ai_systems</h4>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Description</th></tr>
+  <tr><td>id</td><td>UUID PK</td><td>Primary key</td></tr>
+  <tr><td>company_id</td><td>UUID FK</td><td>→ companies.id</td></tr>
+  <tr><td>name</td><td>VARCHAR(255)</td><td>System name</td></tr>
+  <tr><td>description</td><td>TEXT</td><td>Purpose &amp; functionality</td></tr>
+  <tr><td>system_type</td><td>VARCHAR(100)</td><td>recommendation / classification / generative / etc.</td></tr>
+  <tr><td>deployment_status</td><td>ENUM</td><td>development / staging / production / retired</td></tr>
+  <tr><td>risk_level</td><td>ENUM</td><td>unacceptable / high / limited / minimal / unclassified</td></tr>
+  <tr><td>risk_classification_details</td><td>JSONB</td><td>Detailed reasoning from classifier</td></tr>
+  <tr><td>model_details</td><td>JSONB</td><td>Model type, version, provider, parameters</td></tr>
+  <tr><td>data_sources</td><td>JSONB</td><td>Training/input data descriptions</td></tr>
+  <tr><td>affected_populations</td><td>JSONB</td><td>Impacted groups</td></tr>
+  <tr><td>jurisdictions</td><td>JSONB</td><td>Deployment jurisdictions</td></tr>
+  <tr><td>owner_user_id</td><td>UUID FK</td><td>→ users.id (responsible person)</td></tr>
+  <tr><td>created_at / updated_at</td><td>TIMESTAMPTZ</td><td>Timestamps</td></tr>
+</table>
+
+<h4>regulations</h4>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Description</th></tr>
+  <tr><td>id</td><td>UUID PK</td><td>Primary key</td></tr>
+  <tr><td>name</td><td>VARCHAR(255)</td><td>e.g. "EU AI Act"</td></tr>
+  <tr><td>jurisdiction</td><td>VARCHAR(50)</td><td>EU / US_FEDERAL / US_STATE_CA / IN / CN</td></tr>
+  <tr><td>status</td><td>ENUM</td><td>draft / enacted / effective / superseded</td></tr>
+  <tr><td>effective_date</td><td>DATE</td><td>When regulation takes effect</td></tr>
+  <tr><td>summary</td><td>TEXT</td><td>Plain-language summary</td></tr>
+  <tr><td>full_text</td><td>TEXT</td><td>Complete text</td></tr>
+  <tr><td>key_requirements</td><td>JSONB</td><td>Structured requirements</td></tr>
+  <tr><td>penalties</td><td>JSONB</td><td>Penalty structures</td></tr>
+  <tr><td>source_url</td><td>VARCHAR(500)</td><td>Official source</td></tr>
+  <tr><td>version</td><td>INTEGER</td><td>Version number</td></tr>
+</table>
+
+<h4>regulation_chunks (for RAG)</h4>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Description</th></tr>
+  <tr><td>id</td><td>UUID PK</td><td>Primary key</td></tr>
+  <tr><td>regulation_id</td><td>UUID FK</td><td>→ regulations.id</td></tr>
+  <tr><td>chunk_text</td><td>TEXT</td><td>Text chunk (≤512 tokens)</td></tr>
+  <tr><td>article_ref</td><td>VARCHAR(50)</td><td>Article/section reference</td></tr>
+  <tr><td>embedding</td><td>VECTOR(384)</td><td>MiniLM-L6-v2 embedding</td></tr>
+  <tr><td>metadata</td><td>JSONB</td><td>Chunk metadata</td></tr>
+</table>
+
+<h4>compliance_checks</h4>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Description</th></tr>
+  <tr><td>id</td><td>UUID PK</td><td>Primary key</td></tr>
+  <tr><td>ai_system_id</td><td>UUID FK</td><td>→ ai_systems.id</td></tr>
+  <tr><td>regulation_id</td><td>UUID FK</td><td>→ regulations.id</td></tr>
+  <tr><td>check_type</td><td>ENUM</td><td>manual / automated / scheduled</td></tr>
+  <tr><td>status</td><td>ENUM</td><td>compliant / non_compliant / partial / pending</td></tr>
+  <tr><td>score</td><td>FLOAT</td><td>Compliance score 0–100</td></tr>
+  <tr><td>findings</td><td>JSONB</td><td>Detailed findings array</td></tr>
+  <tr><td>recommendations</td><td>JSONB</td><td>Remediation steps</td></tr>
+  <tr><td>checked_by</td><td>UUID FK</td><td>→ users.id</td></tr>
+  <tr><td>checked_at</td><td>TIMESTAMPTZ</td><td>When check ran</td></tr>
+  <tr><td>next_check_due</td><td>TIMESTAMPTZ</td><td>Next scheduled check</td></tr>
+</table>
+
+<h4>bias_audits</h4>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Description</th></tr>
+  <tr><td>id</td><td>UUID PK</td><td>Primary key</td></tr>
+  <tr><td>ai_system_id</td><td>UUID FK</td><td>→ ai_systems.id</td></tr>
+  <tr><td>audit_type</td><td>ENUM</td><td>demographic_parity / equalized_odds / disparate_impact / custom</td></tr>
+  <tr><td>status</td><td>ENUM</td><td>pending / running / completed / failed</td></tr>
+  <tr><td>dataset_info</td><td>JSONB</td><td>Dataset description, size, features</td></tr>
+  <tr><td>protected_attributes</td><td>JSONB</td><td>Attributes tested (gender, race, age…)</td></tr>
+  <tr><td>results</td><td>JSONB</td><td>Metrics, scores, visualization data</td></tr>
+  <tr><td>recommendations</td><td>JSONB</td><td>Mitigation recommendations</td></tr>
+  <tr><td>initiated_by</td><td>UUID FK</td><td>→ users.id</td></tr>
+  <tr><td>started_at / completed_at</td><td>TIMESTAMPTZ</td><td>Timing</td></tr>
+</table>
+
+<h4>incidents</h4>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Description</th></tr>
+  <tr><td>id</td><td>UUID PK</td><td>Primary key</td></tr>
+  <tr><td>ai_system_id</td><td>UUID FK</td><td>→ ai_systems.id</td></tr>
+  <tr><td>title</td><td>VARCHAR(255)</td><td>Incident title</td></tr>
+  <tr><td>description</td><td>TEXT</td><td>Detailed description</td></tr>
+  <tr><td>severity</td><td>ENUM</td><td>critical / high / medium / low</td></tr>
+  <tr><td>incident_type</td><td>ENUM</td><td>safety / bias / privacy / security / performance</td></tr>
+  <tr><td>status</td><td>ENUM</td><td>reported / investigating / resolved / closed</td></tr>
+  <tr><td>affected_parties</td><td>JSONB</td><td>Affected individuals/groups</td></tr>
+  <tr><td>root_cause</td><td>TEXT</td><td>Root cause analysis</td></tr>
+  <tr><td>remediation_actions</td><td>JSONB</td><td>Actions taken</td></tr>
+  <tr><td>reported_to_authority</td><td>BOOLEAN</td><td>Reported per Art. 62?</td></tr>
+  <tr><td>authority_report_date</td><td>TIMESTAMPTZ</td><td>Date reported</td></tr>
+  <tr><td>reported_by</td><td>UUID FK</td><td>→ users.id</td></tr>
+  <tr><td>occurred_at</td><td>TIMESTAMPTZ</td><td>When incident occurred</td></tr>
+</table>
+
+<h4>Additional Tables</h4>
+<table>
+  <tr><th>Table</th><th>Key Fields</th><th>Purpose</th></tr>
+  <tr><td><strong>compliance_deadlines</strong></td><td>regulation_id, deadline_date, description, status</td><td>Track regulatory deadlines</td></tr>
+  <tr><td><strong>model_cards</strong></td><td>ai_system_id, content (JSONB), version, generated_at</td><td>Auto-generated model cards</td></tr>
+  <tr><td><strong>audit_logs</strong></td><td>user_id, action, entity_type, entity_id, before/after (JSONB), timestamp</td><td>Full audit trail</td></tr>
+  <tr><td><strong>webhook_configs</strong></td><td>company_id, url, events (JSONB), secret, is_active</td><td>Webhook configuration</td></tr>
+  <tr><td><strong>notification_preferences</strong></td><td>user_id, channel, event_types, is_enabled</td><td>Per-user notification settings</td></tr>
+</table>
+
+<h3>5.2 Vector Store &amp; Data Flow</h3>
+<div class="diagram">
+Regulation Ingestion Pipeline:
+
+  ┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+  │  Source Doc   │────▶│  Text        │────▶│  Semantic    │────▶│  Embedding   │
+  │  (PDF/HTML)  │     │  Extraction  │     │  Chunking    │     │  Generation  │
+  │              │     │  + Cleaning  │     │  (512 tokens │     │  (MiniLM-L6  │
+  │              │     │              │     │   overlap 50)│     │   384-dim)   │
+  └──────────────┘     └──────────────┘     └──────────────┘     └──────┬───────┘
+                                                                        │
+                                                                        ▼
+  ┌──────────────┐     ┌──────────────┐                          ┌──────────────┐
+  │  User Query  │────▶│  Vector      │◀─────────────────────────│  pgvector    │
+  │              │     │  Search      │      Top-K chunks        │  Store       │
+  └──────────────┘     └──────┬───────┘                          └──────────────┘
+                              │
+                              ▼
+                       ┌──────────────┐     ┌──────────────┐
+                       │  Context     │────▶│  Gemini LLM  │────▶  Answer +
+                       │  Assembly    │     │  Generation  │      Citations
+                       └──────────────┘     └──────────────┘
+</div>
+
+<p><strong>pgvector Configuration:</strong> IVFFlat index (100 lists), cosine similarity, <code>all-MiniLM-L6-v2</code> (384 dims), 512-token chunks with 50-token overlap.</p>
+
+<!-- 6 -->
+<div class="pb"></div>
+<h2>6. AI/ML Architecture</h2>
+
+<h3>6.1 LLM Integration — Google Gemini</h3>
+<p><strong>Gemini 1.5 Flash</strong> powers multiple subsystems:</p>
+<table>
+  <tr><th>Subsystem</th><th>LLM Use Case</th><th>Strategy</th></tr>
+  <tr><td>Risk Classification</td><td>Analyze system against EU AI Act Annex III</td><td>Structured JSON output + chain-of-thought</td></tr>
+  <tr><td>Compliance Chat</td><td>RAG-powered regulatory Q&amp;A</td><td>System prompt + retrieved chunks + query</td></tr>
+  <tr><td>Bias Interpretation</td><td>Interpret statistical metrics → recommendations</td><td>Metrics summary → plain-language analysis</td></tr>
+  <tr><td>Model Card Gen</td><td>Generate cards from system metadata</td><td>Template filling + contextual expansion</td></tr>
+  <tr><td>Incident Analysis</td><td>Severity assessment &amp; reporting guidance</td><td>Classification + obligation mapping</td></tr>
+  <tr><td>Regulation Summary</td><td>Summarize new regulations</td><td>Long-context extraction of key requirements</td></tr>
+</table>
+
+<h3>6.2 Risk Classification Engine</h3>
+<div class="diagram">
+Input: AI System Metadata
+  │
+  ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  RULE-BASED PRE-CLASSIFIER                                      │
+│                                                                  │
+│  Check EU AI Act Annex III categories:                           │
+│  · Biometric identification          → HIGH RISK                │
+│  · Critical infrastructure           → HIGH RISK                │
+│  · Education / employment scoring    → HIGH RISK                │
+│  · Law enforcement                   → HIGH RISK                │
+│  · Migration / border control        → HIGH RISK                │
+│  · Social scoring (government)       → UNACCEPTABLE             │
+│  · Subliminal manipulation           → UNACCEPTABLE             │
+└─────────────────────────┬────────────────────────────────────────┘
+                          │ If no clear match
+                          ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  LLM-BASED CLASSIFIER (Gemini 1.5 Flash)                        │
+│                                                                  │
+│  Prompt: System description + Annex III categories               │
+│  Output: { risk_level, confidence, reasoning,                    │
+│            matching_categories, obligations[] }                  │
+└─────────────────────────┬────────────────────────────────────────┘
+                          │
+                          ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  MULTI-JURISDICTION MAPPER                                       │
+│                                                                  │
+│  Map classification across: EU AI Act · US State laws ·          │
+│  India DPDP · China AIGC Provisions                              │
+│  → Generate unified compliance requirements list                 │
+└──────────────────────────────────────────────────────────────────┘
+</div>
+
+<h3>6.3 Bias Detection &amp; Embedding Pipeline</h3>
+<p><strong>Bias Auditor</strong> implements four fairness metrics:</p>
+<ul>
+  <li><strong>Demographic Parity</strong> — P(Ŷ=1|A=0) = P(Ŷ=1|A=1); equal positive rates across groups</li>
+  <li><strong>Equalized Odds</strong> — equal TPR and FPR across groups</li>
+  <li><strong>Disparate Impact Ratio</strong> — selection rate ratio (&lt;0.8 = potential disparate impact)</li>
+  <li><strong>Calibration</strong> — predicted probabilities match actuals per group</li>
+</ul>
+<p>Statistical significance via Chi-squared / Fisher's exact tests. LLM interprets metrics into recommendations.</p>
+
+<!-- 7 -->
+<div class="pb"></div>
+<h2>7. Compliance Engine Architecture</h2>
+
+<h3>7.1 Regulation Loader &amp; Auto-Classification</h3>
+<p>The regulation loader ingests from multiple sources:</p>
+<ul>
+  <li><strong>Official Gazettes</strong> — EU Official Journal, India Gazette, US Federal Register</li>
+  <li><strong>Legislative Databases</strong> — EUR-Lex, congress.gov, PRS India</li>
+  <li><strong>Curated Packages</strong> — manually verified regulation bundles</li>
+</ul>
+<p>Pipeline: text extraction → structural parsing → requirement extraction → embedding → cross-reference linking.</p>
+
+<p><strong>Auto-classification</strong> on new AI system registration:</p>
+<ol>
+  <li>Keyword matching against prohibited use patterns (Art. 5)</li>
+  <li>Category matching against Annex III high-risk list</li>
+  <li>LLM analysis for ambiguous cases (structured JSON output)</li>
+  <li>Confidence scoring — low-confidence flagged for human review</li>
+  <li>Multi-jurisdiction mapping for all applicable regions</li>
+</ol>
+
+<h3>7.2 Continuous Monitoring &amp; Incident Reporting</h3>
+<div class="diagram">
+┌──────────────────────────────────────────────────────────────────┐
+│                  MONITORING SCHEDULER (Celery Beat)               │
+│                                                                  │
+│  ┌────────────────┐  ┌────────────────┐  ┌───────────────────┐  │
+│  │ Regulation     │  │ Deadline       │  │ Compliance Drift  │  │
+│  │ Updates        │  │ Tracker        │  │ Detector          │  │
+│  │                │  │                │  │                   │  │
+│  │ · New laws     │  │ · Upcoming     │  │ · Re-check on     │  │
+│  │ · Amendments   │  │   deadlines    │  │   system changes  │  │
+│  │ · Effective    │  │ · Grace        │  │ · Flag score      │  │
+│  │   dates        │  │   periods      │  │   degradation     │  │
+│  └───────┬────────┘  └───────┬────────┘  └────────┬──────────┘  │
+│          │                   │                    │              │
+│          ▼                   ▼                    ▼              │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                    ALERT ENGINE                           │   │
+│  │   CRITICAL  →  Slack + Email + SMS (immediate)           │   │
+│  │   HIGH      →  Slack + Email (immediate)                 │   │
+│  │   MEDIUM    →  Email daily digest                        │   │
+│  │   LOW       →  In-app notification only                  │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└──────────────────────────────────────────────────────────────────┘
+</div>
+
+<h4>Incident Reporting Workflow (EU AI Act Article 62)</h4>
+<ol>
+  <li><strong>Detection</strong> — user report or automated anomaly trigger</li>
+  <li><strong>Severity Assessment</strong> — LLM-assisted triage: "serious incident" per Art. 62?</li>
+  <li><strong>Data Collection</strong> — guided form: system ID, description, affected parties, timeline</li>
+  <li><strong>Authority Mapping</strong> — identifies relevant authority (AI Office for EU, MEITY for India)</li>
+  <li><strong>Report Generation</strong> — structured report in required format</li>
+  <li><strong>Deadline Tracking</strong> — 15-day submission deadline with automated reminders</li>
+  <li><strong>Follow-up</strong> — manages required follow-up reports and resolution</li>
+</ol>
+
+<h3>7.3 Cross-Jurisdiction Mapper</h3>
+<table>
+  <tr><th>Requirement</th><th>EU AI Act</th><th>US (NIST AI RMF)</th><th>India (DPDP)</th><th>China (AIGC)</th></tr>
+  <tr><td><strong>Risk Assessment</strong></td><td>Art. 9 — mandatory (high-risk)</td><td>MAP function — recommended</td><td>DPIA for significant data</td><td>Algorithm assessment required</td></tr>
+  <tr><td><strong>Transparency</strong></td><td>Art. 13 — mandatory disclosure</td><td>GOVERN 4 — recommended</td><td>Notice to data subjects</td><td>Content labeling required</td></tr>
+  <tr><td><strong>Human Oversight</strong></td><td>Art. 14 — mandatory (high-risk)</td><td>GOVERN 1 — recommended</td><td>Not explicit</td><td>Manual review for recs</td></tr>
+  <tr><td><strong>Incident Reporting</strong></td><td>Art. 62 — 15 days</td><td>Voluntary (sector-specific)</td><td>CERT-In: 6 hours</td><td>CAC reporting required</td></tr>
+  <tr><td><strong>Bias/Fairness</strong></td><td>Art. 10 — data governance</td><td>MEASURE 2 — recommended</td><td>Non-discrimination</td><td>Anti-discrimination req.</td></tr>
+</table>
+
+<!-- 8 -->
+<div class="pb"></div>
+<h2>8. Integration Architecture</h2>
+
+<h3>Webhook System</h3>
+<ul>
+  <li><strong>Events:</strong> compliance_check.completed · risk_level.changed · deadline.approaching · incident.reported · regulation.updated · bias_audit.completed</li>
+  <li><strong>Targets:</strong> Slack (incoming webhook) · Microsoft Teams (connector) · Email (SendGrid) · Custom HTTP</li>
+  <li><strong>Delivery:</strong> at-least-once, exponential backoff retry (3 attempts)</li>
+  <li><strong>Security:</strong> HMAC-SHA256 signature verification</li>
+</ul>
+
+<h3>API-First Integrations</h3>
+<ul>
+  <li><strong>CI/CD</strong> — compliance checks in ML model deployment pipelines</li>
+  <li><strong>SIEM</strong> — push compliance events to security platforms</li>
+  <li><strong>GRC Platforms</strong> — sync with enterprise governance tools</li>
+  <li><strong>Custom Dashboards</strong> — build reporting on top of our API</li>
+</ul>
+
+<h3>Export Engine</h3>
+<table>
+  <tr><th>Format</th><th>Use Case</th><th>Technology</th></tr>
+  <tr><td>PDF</td><td>Model cards, compliance reports, audit reports</td><td>WeasyPrint / Puppeteer</td></tr>
+  <tr><td>Excel</td><td>Compliance matrices, audit data</td><td>openpyxl</td></tr>
+  <tr><td>JSON</td><td>API responses, data exchange</td><td>Native FastAPI</td></tr>
+  <tr><td>CSV</td><td>Bulk export, regulatory mappings</td><td>Python csv</td></tr>
+</table>
+
+<!-- 9 -->
+<div class="pb"></div>
+<h2>9. Infrastructure &amp; Deployment</h2>
+
+<h3>Cloud Architecture</h3>
+<div class="diagram">
+┌──────────────────────────────────────────────────────────────────┐
+│                          AWS Cloud                               │
+│                                                                  │
+│  ┌──────────────┐   ┌─────────────────────────────────────────┐  │
+│  │  CloudFront  │   │          ECS Fargate Cluster            │  │
+│  │  CDN         │   │                                         │  │
+│  │  (Frontend)  │   │  ┌────────────┐  ┌───────────────────┐  │  │
+│  └──────────────┘   │  │  FastAPI   │  │  Celery Workers   │  │  │
+│                     │  │  (2+ inst) │  │  (2-4 instances)  │  │  │
+│  ┌──────────────┐   │  └────────────┘  └───────────────────┘  │  │
+│  │  Vercel      │   │                  ┌───────────────────┐  │  │
+│  │  (Next.js)   │   │                  │  Celery Beat (1)  │  │  │
+│  └──────────────┘   │                  └───────────────────┘  │  │
+│                     └─────────────────────────────────────────┘  │
+│                                                                  │
+│  ┌──────────────────────┐  ┌──────────────────────────────────┐  │
+│  │  Supabase (Managed)  │  │  ElastiCache (Redis)             │  │
+│  │  · PostgreSQL + RLS  │  │  · Task queue                    │  │
+│  │  · pgvector          │  │  · Session cache                 │  │
+│  │  · Auth (GoTrue)     │  │  · Rate limiting                 │  │
+│  │  · Storage (S3)      │  └──────────────────────────────────┘  │
+│  │  · Realtime          │                                        │
+│  └──────────────────────┘  ┌──────────────────────────────────┐  │
+│                            │  CloudWatch + Sentry              │  │
+│                            │  · Monitoring · Errors · Perf     │  │
+│                            └──────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────┘
+</div>
+
+<h3>Docker Containerization</h3>
+<div class="diagram">
+docker-compose.yml services:
+
+  nginx           :443   → reverse proxy + SSL termination
+  fastapi-app     :8000  → gunicorn + uvicorn workers
+  celery-worker   ×4     → concurrent task processing
+  celery-beat     ×1     → scheduler (single instance)
+  redis           :6379  → queue + cache
+  postgres        :5432  → dev only (prod = Supabase)
+</div>
+
+<h3>Security Architecture</h3>
+<ul>
+  <li><strong>Encryption at Rest</strong> — AES-256 (Supabase/AWS managed)</li>
+  <li><strong>Encryption in Transit</strong> — TLS 1.3 everywhere</li>
+  <li><strong>Row-Level Security</strong> — PostgreSQL RLS for tenant isolation</li>
+  <li><strong>API Auth</strong> — JWT with RS256, short-lived tokens (1h)</li>
+  <li><strong>Rate Limiting</strong> — Redis sliding window per API key</li>
+  <li><strong>Audit Logging</strong> — all compliance actions logged with user, timestamp, before/after</li>
+  <li><strong>Secrets</strong> — AWS Secrets Manager (never in code)</li>
+  <li><strong>OWASP Top 10</strong> — input validation, CSRF, SQLi prevention (ORM), XSS (React)</li>
+</ul>
+
+<!-- 10 -->
+<div class="pb"></div>
+<h2>10. Technology Stack Summary</h2>
+
+<table>
+  <tr><th>Layer</th><th>Technology</th><th>Version</th><th>Purpose</th></tr>
+  <tr><td><strong>Frontend</strong></td><td>Next.js</td><td>16.x</td><td>React framework (App Router)</td></tr>
+  <tr><td></td><td>TypeScript</td><td>5.x</td><td>Type safety</td></tr>
+  <tr><td></td><td>Tailwind CSS</td><td>4.x</td><td>Utility-first styling</td></tr>
+  <tr><td></td><td>Framer Motion</td><td>11.x</td><td>Animations</td></tr>
+  <tr><td></td><td>TanStack Query</td><td>5.x</td><td>Server state management</td></tr>
+  <tr><td></td><td>Recharts</td><td>2.x</td><td>Data visualization</td></tr>
+  <tr><td></td><td>Lucide React</td><td>latest</td><td>Icons</td></tr>
+  <tr><td><strong>Backend</strong></td><td>Python</td><td>3.10+</td><td>Primary language</td></tr>
+  <tr><td></td><td>FastAPI</td><td>0.109+</td><td>API framework</td></tr>
+  <tr><td></td><td>SQLAlchemy</td><td>2.x</td><td>ORM</td></tr>
+  <tr><td></td><td>Alembic</td><td>1.x</td><td>Migrations</td></tr>
+  <tr><td></td><td>Pydantic</td><td>2.x</td><td>Validation &amp; schemas</td></tr>
+  <tr><td></td><td>Celery</td><td>5.x</td><td>Distributed task queue</td></tr>
+  <tr><td><strong>AI/ML</strong></td><td>Google Gemini</td><td>1.5 Flash</td><td>LLM compliance analysis</td></tr>
+  <tr><td></td><td>sentence-transformers</td><td>MiniLM-L6-v2</td><td>Embeddings (384-dim)</td></tr>
+  <tr><td></td><td>Sarvam AI</td><td>latest</td><td>Indian language transcription</td></tr>
+  <tr><td><strong>Database</strong></td><td>PostgreSQL</td><td>15+</td><td>Primary DB (Supabase)</td></tr>
+  <tr><td></td><td>pgvector</td><td>0.5+</td><td>Vector search</td></tr>
+  <tr><td></td><td>Redis</td><td>7.x</td><td>Cache + queue</td></tr>
+  <tr><td><strong>Auth</strong></td><td>Supabase Auth</td><td>GoTrue</td><td>Auth + JWT</td></tr>
+  <tr><td><strong>Storage</strong></td><td>Supabase Storage</td><td>S3-compat</td><td>Files &amp; reports</td></tr>
+  <tr><td><strong>Infra</strong></td><td>Docker</td><td>24.x</td><td>Containerization</td></tr>
+  <tr><td></td><td>AWS ECS Fargate</td><td>—</td><td>Orchestration</td></tr>
+  <tr><td></td><td>Vercel</td><td>—</td><td>Frontend hosting</td></tr>
+  <tr><td></td><td>CloudFront</td><td>—</td><td>CDN</td></tr>
+  <tr><td><strong>Monitoring</strong></td><td>Sentry</td><td>latest</td><td>Error tracking</td></tr>
+  <tr><td></td><td>LogRocket</td><td>latest</td><td>Session replay</td></tr>
+  <tr><td></td><td>CloudWatch</td><td>—</td><td>Infra monitoring</td></tr>
+  <tr><td><strong>CI/CD</strong></td><td>GitHub Actions</td><td>—</td><td>Build &amp; deploy</td></tr>
+</table>
+
+<div class="footer">
+  <div class="rootedai">ROOTEDAI</div>
+  <p style="margin-top:8px">Adhi Compliance Architecture Document v1.0 — © 2026 RootedAI — Confidential</p>
+  <p>rootedai.co.in · info@rootedai.co.in</p>
+</div>
+
+</body>
+</html>

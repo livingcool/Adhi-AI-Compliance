@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Adhi Compliance — Software Development Plan</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+  :root{--bg:rgb(5,5,5);--bg2:rgb(10,10,10);--navy:rgb(15,23,42);--navy2:rgb(2,6,23);--card:rgba(255,255,255,0.06);--card2:rgba(255,255,255,0.1);--blue:rgb(59,130,246);--blue2:rgb(96,165,250);--purple:rgb(168,85,247);--purple2:rgb(192,132,252);--green:rgb(34,197,94);--red:rgb(239,68,68);--yellow:rgb(234,179,8);--text:rgb(255,255,255);--text2:rgb(163,163,163);--text3:rgba(255,255,255,0.6);--muted:rgb(148,163,184);--border:rgba(255,255,255,0.08)}
+  *{margin:0;padding:0;box-sizing:border-box}
+  @page{size:A4;margin:18mm 16mm 22mm 16mm}
+  body{font-family:'Montserrat','Inter',system-ui,sans-serif;background:var(--bg);color:var(--text2);font-size:10pt;line-height:1.7;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background-image:radial-gradient(rgba(59,130,246,0.15) 1px,transparent 1px);background-size:24px 24px;pointer-events:none;z-index:0;opacity:0.4}
+  .cover{height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;page-break-after:always;position:relative;overflow:hidden;background:linear-gradient(160deg,var(--bg) 0%,var(--navy2) 40%,rgb(23,37,84) 70%,var(--navy) 100%)}
+  .cover::before{content:'';position:absolute;top:-100px;left:-100px;width:400px;height:400px;border:1px solid rgba(255,255,255,0.04);transform:rotate(45deg)}
+  .cover::after{content:'';position:absolute;bottom:-80px;right:-80px;width:350px;height:350px;border:1px solid rgba(59,130,246,0.06);transform:rotate(15deg)}
+  .cover .logo{font-family:'Outfit',sans-serif;font-size:11pt;font-weight:700;letter-spacing:6px;text-transform:uppercase;color:var(--text);margin-bottom:60px;position:relative}
+  .cover h1{font-family:'Outfit',sans-serif;font-size:44pt;font-weight:900;font-style:italic;color:var(--text);letter-spacing:-1px;position:relative;line-height:1.1}
+  .cover h1 span{background:linear-gradient(135deg,var(--blue),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .cover .tagline{font-size:13pt;color:var(--text3);margin-top:16px;font-weight:300;letter-spacing:1px}
+  .cover .doc-type{font-family:'Outfit',sans-serif;font-size:10pt;color:var(--muted);margin-top:50px;font-weight:500;text-transform:uppercase;letter-spacing:5px;padding:10px 28px;border:1px solid var(--border);border-radius:50px}
+  .cover .meta{margin-top:50px;color:var(--muted);font-size:9pt;line-height:2}
+  .cover .meta strong{color:var(--text)}
+  .toc{page-break-after:always;padding-top:40px}
+  .toc h2{font-family:'Outfit',sans-serif;font-size:24pt;font-weight:900;font-style:italic;color:var(--text);margin-bottom:30px;border:none;padding:0}
+  .ti{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)}
+  .ti.m{font-weight:600;color:var(--text)}
+  .ti.s{padding-left:22px;color:var(--muted);font-size:9.5pt}
+  h2{font-family:'Outfit',sans-serif;font-size:22pt;font-weight:900;font-style:italic;color:var(--text);margin-top:45px;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid var(--blue);page-break-after:avoid}
+  h3{font-family:'Outfit',sans-serif;font-size:13pt;font-weight:700;color:var(--text);margin-top:28px;margin-bottom:10px;page-break-after:avoid}
+  h4{font-family:'Outfit',sans-serif;font-size:11pt;font-weight:600;color:var(--blue2);margin-top:20px;margin-bottom:8px}
+  p{margin-bottom:10px;position:relative}
+  .pb{page-break-before:always}
+  strong{color:var(--text)}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:9pt}
+  th{background:linear-gradient(135deg,var(--blue),var(--purple));color:var(--text);font-weight:600;text-align:left;padding:9px 11px;font-family:'Outfit',sans-serif}
+  td{padding:7px 11px;border-bottom:1px solid var(--border)}
+  tr:nth-child(even) td{background:var(--card)}
+  .diagram{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin:16px 0;font-family:'JetBrains Mono',monospace;font-size:8pt;line-height:1.5;white-space:pre;overflow-x:auto;color:var(--blue2);backdrop-filter:blur(10px)}
+  code{font-family:'JetBrains Mono',monospace;background:var(--card2);padding:1px 6px;border-radius:4px;font-size:8.5pt;color:var(--blue2)}
+  .info{background:rgba(59,130,246,0.08);border-left:3px solid var(--blue);padding:13px 18px;margin:16px 0;border-radius:0 8px 8px 0}
+  .warn{background:rgba(234,179,8,0.08);border-left:3px solid var(--yellow);padding:13px 18px;margin:16px 0;border-radius:0 8px 8px 0}
+  ul,ol{margin:8px 0 12px 20px}
+  li{margin-bottom:4px}
+  .badge{display:inline-block;padding:3px 12px;border-radius:50px;font-size:7.5pt;font-weight:700;text-transform:uppercase;font-family:'Outfit',sans-serif;letter-spacing:0.5px}
+  .bg{background:var(--green);color:var(--bg)}
+  .bb{background:var(--blue);color:var(--text)}
+  .bp{background:var(--purple);color:var(--text)}
+  .by{background:var(--yellow);color:var(--bg)}
+  .br{background:var(--red);color:var(--text)}
+  .sprint-box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin:14px 0;backdrop-filter:blur(10px)}
+  .sprint-box h4{margin-top:0;color:var(--text);font-size:12pt}
+  .sprint-box .dur{font-size:8.5pt;color:var(--blue2);margin-bottom:8px}
+  .footer{margin-top:60px;text-align:center;color:var(--muted);font-size:8pt;border-top:1px solid var(--border);padding-top:15px}
+  .footer .rootedai{font-family:'Outfit',sans-serif;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--text3);font-size:9pt}
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="logo">ROOTEDAI</div>
+  <h1>Software <span>Development Plan</span></h1>
+  <div class="tagline">Adhi Compliance — AI Compliance, Automated.</div>
+  <div class="doc-type">Full Development Plan</div>
+  <div class="meta">
+    <strong>RootedAI</strong> — Engineering Intelligence &amp; Enterprise Automation<br>
+    Version 1.0 &nbsp;·&nbsp; February 2026 &nbsp;·&nbsp; Confidential<br>
+    Prepared by Ganesh Khovalan, Founder &amp; CEO
+  </div>
+</div>
+
+<!-- TOC -->
+<div class="toc">
+  <h2>Table of Contents</h2>
+  <div class="ti m"><span>1. Project Overview &amp; Objectives</span></div>
+  <div class="ti m"><span>2. Scope Definition</span></div>
+  <div class="ti m"><span>3. Team Structure &amp; Roles</span></div>
+  <div class="ti m"><span>4. Development Methodology</span></div>
+  <div class="ti m"><span>5. Phase 1: Planning &amp; Foundation (Weeks 1–3)</span></div>
+  <div class="ti m"><span>6. Phase 2: Core Platform Build (Weeks 4–10)</span></div>
+  <div class="ti s"><span>Sprint 1–4 Detailed Breakdown</span></div>
+  <div class="ti m"><span>7. Phase 3: Advanced Features (Weeks 11–16)</span></div>
+  <div class="ti s"><span>Sprint 5–8 Detailed Breakdown</span></div>
+  <div class="ti m"><span>8. Phase 4: Enterprise &amp; SaaS (Weeks 17–22)</span></div>
+  <div class="ti s"><span>Sprint 9–11 Detailed Breakdown</span></div>
+  <div class="ti m"><span>9. Phase 5: Testing &amp; QA (Weeks 23–25)</span></div>
+  <div class="ti m"><span>10. Phase 6: Deployment &amp; Launch (Weeks 26–28)</span></div>
+  <div class="ti m"><span>11. Phase 7: Post-Launch (Weeks 29+)</span></div>
+  <div class="ti m"><span>12. Risk Register</span></div>
+  <div class="ti m"><span>13. Budget Estimate</span></div>
+  <div class="ti m"><span>14. Milestones &amp; Timeline</span></div>
+  <div class="ti m"><span>15. Success Metrics</span></div>
+  <div class="ti m"><span>16. Dependencies &amp; Assumptions</span></div>
+</div>
+
+<!-- 1 -->
+<div class="pb"></div>
+<h2>1. Project Overview &amp; Objectives</h2>
+<p><strong>Adhi Compliance</strong> is an AI-powered compliance management platform that enables organizations deploying AI systems to achieve and maintain regulatory compliance across multiple jurisdictions — EU AI Act, US state laws, India's DPDP Act, and China's AIGC provisions.</p>
+
+<h3>Primary Objectives</h3>
+<ol>
+  <li><strong>Build a production-ready SaaS platform</strong> that auto-classifies AI systems by risk level and monitors compliance in real-time</li>
+  <li><strong>Launch an MVP within 6 months</strong> targeting Indian IT companies serving EU/US clients as the initial market</li>
+  <li><strong>Establish RootedAI</strong> as a first-mover in the India-focused AI compliance space</li>
+  <li><strong>Generate recurring revenue</strong> through tiered SaaS subscriptions (₹50K–₹2L+/month)</li>
+  <li><strong>Create defensible IP</strong> around regulation-as-data pipelines and compliance AI agents</li>
+</ol>
+
+<h3>Product Vision</h3>
+<p>Adhi Compliance is the <strong>compliance layer every AI company plugs into</strong>. One platform for risk classification, continuous monitoring, bias auditing, and regulatory reporting. Think of it as "Datadog for AI Compliance" — a horizontal platform that becomes essential infrastructure for any organization deploying AI.</p>
+
+<div class="info">
+  <strong>Pivot Context:</strong> Adhi Compliance is being pivoted from a multimodal RAG system. The existing tech stack (FastAPI, Next.js, Celery/Redis, FAISS, Gemini) and features (multi-org support, file ingestion, RAG query engine) form the foundation. This plan covers the delta from current state to full compliance platform.
+</div>
+
+<!-- 2 -->
+<h2>2. Scope Definition</h2>
+<h3>In Scope (v1.0)</h3>
+<ul>
+  <li>AI System Registry — register, catalog, and manage AI systems per organization</li>
+  <li>Risk Classification Engine — rule-based + LLM-powered EU AI Act risk classification</li>
+  <li>Regulation Knowledge Base — structured, searchable database of AI regulations (EU, US, India, China)</li>
+  <li>Compliance Chat (RAG) — natural language Q&amp;A against regulation corpus</li>
+  <li>Compliance Dashboard — executive overview with scores, alerts, and status tracking</li>
+  <li>Bias Auditor — upload datasets, run fairness metrics, generate audit reports</li>
+  <li>Model Card Generator — auto-generate model cards from system metadata</li>
+  <li>Incident Reporting — EU AI Act Article 62 workflow with deadline tracking</li>
+  <li>Continuous Monitoring — scheduled compliance re-checks with alerting</li>
+  <li>Report Generation — PDF/Excel compliance reports and model cards</li>
+  <li>Multi-tenant SaaS — company isolation, user management, subscription tiers</li>
+  <li>Webhook Integrations — Slack, Teams, Email notifications</li>
+</ul>
+
+<h3>Out of Scope (v1.0)</h3>
+<ul>
+  <li>Mobile native apps (PWA may be considered post-launch)</li>
+  <li>Real-time model monitoring (connecting to live ML inference pipelines)</li>
+  <li>Automated regulatory filing/submission to authorities</li>
+  <li>White-label / OEM distribution</li>
+  <li>Non-English regulatory document processing (v2.0 — Sarvam AI for Indian languages)</li>
+  <li>SOC 2 / ISO 27001 certification (post-launch priority)</li>
+</ul>
+
+<!-- 3 -->
+<div class="pb"></div>
+<h2>3. Team Structure &amp; Roles</h2>
+<table>
+  <tr><th>Role</th><th>Person</th><th>Responsibilities</th><th>Allocation</th></tr>
+  <tr><td><strong>Founder / Lead Dev</strong></td><td>Ganesh Khovalan</td><td>Architecture, backend, AI/ML, product decisions, project management</td><td>Full-time</td></tr>
+  <tr><td><strong>AI Coding Assistant</strong></td><td>Claude / Cursor / Copilot</td><td>Code generation, reviews, testing, documentation</td><td>Always-on</td></tr>
+  <tr><td><strong>Frontend (Contract)</strong></td><td>TBD (Phase 2)</td><td>Next.js UI implementation from designs</td><td>Part-time</td></tr>
+  <tr><td><strong>Design (Contract)</strong></td><td>TBD (Phase 1)</td><td>UI/UX wireframes, design system, Figma</td><td>2–3 weeks</td></tr>
+  <tr><td><strong>Legal Advisor</strong></td><td>TBD</td><td>Regulatory accuracy review, compliance content validation</td><td>Advisory</td></tr>
+</table>
+
+<div class="info">
+  <strong>Solo Dev + AI Model:</strong> This plan is designed for a solo developer augmented by AI coding assistants. Sprint velocities are calibrated for this model — roughly 2x what a solo dev could achieve unassisted. Critical path items are serialized; parallelizable work leverages AI pair-programming.
+</div>
+
+<!-- 4 -->
+<h2>4. Development Methodology</h2>
+<ul>
+  <li><strong>Framework:</strong> Agile Scrum (adapted for solo dev)</li>
+  <li><strong>Sprint Length:</strong> 2 weeks</li>
+  <li><strong>Ceremonies:</strong> Weekly self-review (Monday), sprint planning (start), sprint retro (end)</li>
+  <li><strong>Tracking:</strong> GitHub Projects (Kanban board) with Issues linked to PRs</li>
+  <li><strong>Branching:</strong> GitFlow — <code>main</code> (prod), <code>develop</code> (staging), <code>feature/*</code> branches</li>
+  <li><strong>CI/CD:</strong> GitHub Actions — lint, test, build, deploy on merge</li>
+  <li><strong>Documentation:</strong> Inline (JSDoc/docstrings) + Architecture Decision Records (ADRs) for major choices</li>
+  <li><strong>Quality Gates:</strong> Every PR requires: passing tests, type-check clean, no lint errors</li>
+</ul>
+
+<!-- 5 -->
+<div class="pb"></div>
+<h2>5. Phase 1: Planning &amp; Foundation (Weeks 1–3)</h2>
+<p><span class="badge bb">PHASE 1</span> &nbsp; Duration: 3 weeks &nbsp;·&nbsp; Focus: Architecture, Design, Setup</p>
+
+<h3>Week 1: Requirements &amp; Architecture</h3>
+<ul>
+  <li>Finalize product requirements document (PRD) with feature prioritization (MoSCoW)</li>
+  <li>Complete architecture design (reference Architecture Document v1.0)</li>
+  <li>Define complete database schema — all tables, relationships, indexes</li>
+  <li>Design API contracts — OpenAPI 3.0 specification for all endpoints</li>
+  <li>Select and configure Supabase project (PostgreSQL + Auth + Storage)</li>
+  <li>Set up pgvector extension and vector index</li>
+</ul>
+
+<h3>Week 2: UI/UX Design &amp; Dev Environment</h3>
+<ul>
+  <li>Create wireframes for all primary pages (Figma or Excalidraw)</li>
+  <li>Define design system tokens: colors, typography, spacing, component library</li>
+  <li>Set up monorepo structure (or separate repos) for frontend + backend</li>
+  <li>Initialize Next.js 16 project with TypeScript, Tailwind, Framer Motion</li>
+  <li>Initialize FastAPI project with SQLAlchemy, Alembic, Celery</li>
+  <li>Configure Docker Compose for local development</li>
+  <li>Set up GitHub repos, branch protection, CI/CD pipelines</li>
+</ul>
+
+<h3>Week 3: Foundation Code</h3>
+<ul>
+  <li>Implement Supabase Auth integration (frontend + backend JWT validation)</li>
+  <li>Create SQLAlchemy models for all core tables</li>
+  <li>Run initial Alembic migrations</li>
+  <li>Implement RLS policies for multi-tenant isolation</li>
+  <li>Build API middleware stack: auth, rate limiting, CORS, error handling</li>
+  <li>Create shared UI component library: Button, Card, Input, Modal, Table, Badge</li>
+  <li>Build dashboard layout shell: sidebar, topbar, main content area</li>
+</ul>
+
+<h4>Phase 1 Deliverables</h4>
+<table>
+  <tr><th>Deliverable</th><th>Status Criteria</th></tr>
+  <tr><td>Architecture Document</td><td>Reviewed and finalized</td></tr>
+  <tr><td>OpenAPI Specification</td><td>All endpoints defined with schemas</td></tr>
+  <tr><td>Database Schema</td><td>All tables created, RLS active</td></tr>
+  <tr><td>Dev Environment</td><td>Docker Compose up, all services running</td></tr>
+  <tr><td>Auth System</td><td>Register/login/JWT working end-to-end</td></tr>
+  <tr><td>UI Shell</td><td>Dashboard layout with navigation working</td></tr>
+</table>
+
+<!-- 6 -->
+<div class="pb"></div>
+<h2>6. Phase 2: Core Platform Build (Weeks 4–10)</h2>
+<p><span class="badge bg">PHASE 2</span> &nbsp; Duration: 7 weeks (4 sprints) &nbsp;·&nbsp; Focus: Core Features</p>
+
+<div class="sprint-box">
+  <h4>Sprint 1: Auth + Company Profile + AI System Registry</h4>
+  <div class="dur">Weeks 4–5 &nbsp;·&nbsp; 2 weeks &nbsp;·&nbsp; <span class="badge bg">CORE</span></div>
+  <p><strong>Backend Tasks:</strong></p>
+  <ul>
+    <li>Complete auth router: register, login, refresh, me, password reset</li>
+    <li>Company CRUD endpoints with validation</li>
+    <li>AI System CRUD endpoints with full metadata support</li>
+    <li>Pagination, filtering, sorting utilities</li>
+    <li>File upload endpoint for system documentation</li>
+    <li>Unit tests for all new endpoints (pytest)</li>
+  </ul>
+  <p><strong>Frontend Tasks:</strong></p>
+  <ul>
+    <li>Login/Register pages with Supabase Auth integration</li>
+    <li>Company Settings page with form validation</li>
+    <li>AI Systems list page (grid/table toggle, search, filters)</li>
+    <li>AI System detail page with tabs (Overview, Compliance, History)</li>
+    <li>New AI System registration wizard (multi-step form)</li>
+    <li>React Query hooks for all API calls</li>
+  </ul>
+  <p><strong>Acceptance Criteria:</strong> User can register → create company → add AI systems → view/edit/delete systems.</p>
+</div>
+
+<div class="sprint-box">
+  <h4>Sprint 2: Regulation Knowledge Base + Loader</h4>
+  <div class="dur">Weeks 6–7 &nbsp;·&nbsp; 2 weeks &nbsp;·&nbsp; <span class="badge bp">AI/ML</span></div>
+  <p><strong>Backend Tasks:</strong></p>
+  <ul>
+    <li>Regulation model and CRUD endpoints</li>
+    <li>Regulation Loader Celery task: ingest PDF/HTML → parse → chunk → embed</li>
+    <li>Semantic chunking pipeline (512 tokens, 50 overlap, structural awareness)</li>
+    <li>Embedding generation with sentence-transformers (MiniLM-L6-v2)</li>
+    <li>pgvector storage and IVFFlat index configuration</li>
+    <li>Semantic search endpoint (vector similarity + metadata filtering)</li>
+    <li>Load initial regulation set: EU AI Act, NIST AI RMF, India DPDP, China AIGC</li>
+  </ul>
+  <p><strong>Frontend Tasks:</strong></p>
+  <ul>
+    <li>Regulation Library page with search, jurisdiction filters, status badges</li>
+    <li>Regulation detail page with article-level navigation</li>
+    <li>Compliance Chat page — streaming chat UI with source citations</li>
+  </ul>
+  <p><strong>Acceptance Criteria:</strong> 4+ regulations loaded and searchable. Chat returns accurate answers with article citations.</p>
+</div>
+
+<div class="sprint-box">
+  <h4>Sprint 3: Risk Classification Engine + Compliance Check</h4>
+  <div class="dur">Weeks 8–9 &nbsp;·&nbsp; 2 weeks &nbsp;·&nbsp; <span class="badge bp">AI/ML</span></div>
+  <p><strong>Backend Tasks:</strong></p>
+  <ul>
+    <li>Rule-based pre-classifier (EU AI Act Annex III keyword matching)</li>
+    <li>LLM-based classifier (Gemini structured output with reasoning)</li>
+    <li>Classification confidence scoring and human review flagging</li>
+    <li>Compliance check engine: evaluate system against regulation requirements</li>
+    <li>Compliance score calculation algorithm</li>
+    <li>Multi-jurisdiction classification mapping</li>
+    <li>Celery tasks for async classification and compliance checks</li>
+  </ul>
+  <p><strong>Frontend Tasks:</strong></p>
+  <ul>
+    <li>Classification results display in AI System detail page</li>
+    <li>Risk level badges with color coding (red/orange/yellow/green)</li>
+    <li>Compliance Check results page with findings and recommendations</li>
+    <li>"Run Classification" and "Run Compliance Check" action buttons</li>
+  </ul>
+  <p><strong>Acceptance Criteria:</strong> System auto-classifies on registration. Compliance checks generate scored findings.</p>
+</div>
+
+<div class="sprint-box">
+  <h4>Sprint 4: Compliance Dashboard</h4>
+  <div class="dur">Week 10 &nbsp;·&nbsp; 1 week (sprint cleanup + dashboard) &nbsp;·&nbsp; <span class="badge bb">UI</span></div>
+  <p><strong>Tasks:</strong></p>
+  <ul>
+    <li>Dashboard API: aggregated compliance metrics per company</li>
+    <li>Compliance Score Ring (animated donut chart — overall score)</li>
+    <li>Risk Distribution Heatmap (systems by risk level)</li>
+    <li>Recent Alerts Feed (real-time via Supabase Realtime)</li>
+    <li>System Status Grid (quick status cards per AI system)</li>
+    <li>Upcoming Deadlines widget</li>
+    <li>Sprint 1–3 bug fixes and polish</li>
+    <li><strong>Internal demo / milestone checkpoint</strong></li>
+  </ul>
+  <p><strong>Acceptance Criteria:</strong> Dashboard shows live compliance data. All Phase 2 features working end-to-end.</p>
+</div>
+
+<!-- 7 -->
+<div class="pb"></div>
+<h2>7. Phase 3: Advanced Features (Weeks 11–16)</h2>
+<p><span class="badge bp">PHASE 3</span> &nbsp; Duration: 6 weeks (3 sprints) &nbsp;·&nbsp; Focus: Differentiation Features</p>
+
+<div class="sprint-box">
+  <h4>Sprint 5: Bias Auditor + Model Card Generator</h4>
+  <div class="dur">Weeks 11–12 &nbsp;·&nbsp; 2 weeks &nbsp;·&nbsp; <span class="badge bp">AI/ML</span></div>
+  <ul>
+    <li>Bias audit engine: demographic parity, equalized odds, disparate impact, calibration</li>
+    <li>Dataset upload and validation (CSV/JSON with protected attribute identification)</li>
+    <li>Statistical significance testing (Chi-squared, Fisher's exact)</li>
+    <li>LLM interpretation of bias metrics → actionable recommendations</li>
+    <li>Celery task for async audit execution</li>
+    <li>Model Card Generator: template-based + LLM-enhanced from system metadata</li>
+    <li>Bias Auditor UI: config form, progress indicator, results dashboard with charts</li>
+    <li>Model Card preview and PDF export</li>
+  </ul>
+</div>
+
+<div class="sprint-box">
+  <h4>Sprint 6: Continuous Monitoring + Alerts</h4>
+  <div class="dur">Weeks 13–14 &nbsp;·&nbsp; 2 weeks &nbsp;·&nbsp; <span class="badge by">INFRA</span></div>
+  <ul>
+    <li>Celery Beat scheduler: hourly compliance drift detection</li>
+    <li>Regulation update checker (daily scrape of official sources)</li>
+    <li>Deadline tracker with countdown and grace period logic</li>
+    <li>Alert engine with priority levels (critical → SMS, high → email, medium → digest, low → in-app)</li>
+    <li>Webhook delivery system with HMAC signatures and retry logic</li>
+    <li>Notification preferences UI (per user: channels × event types)</li>
+    <li>Monitoring dashboard with real-time status indicators</li>
+    <li>Supabase Realtime integration for live alert feed</li>
+  </ul>
+</div>
+
+<div class="sprint-box">
+  <h4>Sprint 7: Incident Reporting + Cross-Border Mapper</h4>
+  <div class="dur">Weeks 15–16 &nbsp;·&nbsp; 2 weeks &nbsp;·&nbsp; <span class="badge bb">CORE</span></div>
+  <ul>
+    <li>Incident reporting workflow (Art. 62): create, triage, track, resolve</li>
+    <li>LLM-assisted severity assessment ("serious incident" classification)</li>
+    <li>Authority mapping (EU → AI Office, India → MEITY, etc.)</li>
+    <li>15-day deadline tracker with automated reminders</li>
+    <li>Incident report auto-generation in required format</li>
+    <li>Cross-jurisdiction compliance mapper: unified view per AI system across all applicable regulations</li>
+    <li>Requirement gap analysis between jurisdictions</li>
+    <li>Incident UI: report form, timeline view, status tracker</li>
+    <li>Cross-border compliance matrix view</li>
+  </ul>
+</div>
+
+<!-- Sprint 8: Reports -->
+<div class="sprint-box">
+  <h4>Sprint 8: Report Generator (PDF/Excel Export)</h4>
+  <div class="dur">Week 16 (overlap) &nbsp;·&nbsp; 1 week &nbsp;·&nbsp; <span class="badge bb">CORE</span></div>
+  <ul>
+    <li>Report templates: Compliance Summary, Full Audit Report, Model Card, Bias Report, Incident Report</li>
+    <li>PDF generation engine (WeasyPrint — HTML → PDF with branded templates)</li>
+    <li>Excel export for compliance matrices and raw audit data</li>
+    <li>Async report generation via Celery with download notification</li>
+    <li>Reports page UI with generation history and download links</li>
+  </ul>
+</div>
+
+<!-- 8 -->
+<div class="pb"></div>
+<h2>8. Phase 4: Enterprise &amp; SaaS (Weeks 17–22)</h2>
+<p><span class="badge by">PHASE 4</span> &nbsp; Duration: 6 weeks (3 sprints) &nbsp;·&nbsp; Focus: Productization</p>
+
+<div class="sprint-box">
+  <h4>Sprint 9: Multi-Tenant SaaS — Billing &amp; Tiers</h4>
+  <div class="dur">Weeks 17–18 &nbsp;·&nbsp; 2 weeks</div>
+  <ul>
+    <li>Subscription tier system: Starter (₹50K/mo), Growth (₹2L/mo), Enterprise (custom)</li>
+    <li>Feature gating per tier (# systems, # audits, API access, priority support)</li>
+    <li>Razorpay/Stripe integration for recurring billing</li>
+    <li>Usage metering and billing dashboard</li>
+    <li>Team management: invite users, assign roles, manage permissions</li>
+    <li>Onboarding flow: welcome wizard, sample data, guided tour</li>
+    <li>Pricing page and subscription management UI</li>
+  </ul>
+</div>
+
+<div class="sprint-box">
+  <h4>Sprint 10: API-First + CI/CD Integration</h4>
+  <div class="dur">Weeks 19–20 &nbsp;·&nbsp; 2 weeks</div>
+  <ul>
+    <li>API key management system (generate, rotate, revoke)</li>
+    <li>API documentation portal (Swagger UI + custom docs site)</li>
+    <li>Rate limiting per API key with tier-based quotas</li>
+    <li>CI/CD integration examples: GitHub Actions, GitLab CI compliance check steps</li>
+    <li>Python SDK for programmatic API access</li>
+    <li>Webhook management UI with delivery logs and retry</li>
+    <li>API key management page in Settings</li>
+  </ul>
+</div>
+
+<div class="sprint-box">
+  <h4>Sprint 11: Agent Activity Monitor (AGI-Ready)</h4>
+  <div class="dur">Weeks 21–22 &nbsp;·&nbsp; 2 weeks &nbsp;·&nbsp; <span class="badge bp">FUTURE</span></div>
+  <ul>
+    <li>AI Agent activity logging framework (track decisions, actions, outputs)</li>
+    <li>Agent behavior compliance rules (configurable guardrails)</li>
+    <li>Real-time agent monitoring dashboard</li>
+    <li>Anomaly detection for agent behavior drift</li>
+    <li>Agent compliance report generation</li>
+    <li>Integration hooks for LangChain, CrewAI, AutoGPT-style agent frameworks</li>
+  </ul>
+</div>
+
+<!-- 9 -->
+<div class="pb"></div>
+<h2>9. Phase 5: Testing &amp; QA (Weeks 23–25)</h2>
+<p><span class="badge br">PHASE 5</span> &nbsp; Duration: 3 weeks &nbsp;·&nbsp; Focus: Quality Assurance</p>
+
+<h3>Unit Testing</h3>
+<ul>
+  <li>Backend: pytest with 80%+ coverage target on services and compliance engine</li>
+  <li>Frontend: Vitest + React Testing Library for component tests</li>
+  <li>API contract tests against OpenAPI spec</li>
+</ul>
+
+<h3>Integration Testing</h3>
+<ul>
+  <li>End-to-end flows: registration → system creation → classification → compliance check → report</li>
+  <li>Celery task integration tests (regulation loading, bias audits, report generation)</li>
+  <li>Webhook delivery testing with mock endpoints</li>
+  <li>Multi-tenant isolation verification</li>
+</ul>
+
+<h3>Security Audit</h3>
+<ul>
+  <li>OWASP Top 10 review: injection, XSS, CSRF, broken auth, misconfig</li>
+  <li>RLS policy audit: verify no cross-tenant data leakage</li>
+  <li>JWT handling review: token storage, refresh flow, expiry</li>
+  <li>Dependency vulnerability scan (Snyk/Dependabot)</li>
+  <li>API rate limiting and abuse testing</li>
+</ul>
+
+<h3>Performance Testing</h3>
+<ul>
+  <li>Load testing: 100+ concurrent users, 1000+ API requests/minute</li>
+  <li>Vector search performance: query latency &lt;200ms at 100K chunks</li>
+  <li>LLM response times: classification &lt;10s, chat &lt;5s first token</li>
+  <li>Report generation: PDF &lt;30s, Excel &lt;15s</li>
+  <li>Database query optimization (EXPLAIN ANALYZE on critical queries)</li>
+</ul>
+
+<h3>User Acceptance Testing</h3>
+<ul>
+  <li>Recruit 5–10 beta testers from Indian IT companies</li>
+  <li>Structured feedback forms per feature area</li>
+  <li>Bug triage and priority fix cycle</li>
+  <li>UX iteration based on user feedback</li>
+</ul>
+
+<!-- 10 -->
+<div class="pb"></div>
+<h2>10. Phase 6: Deployment &amp; Launch (Weeks 26–28)</h2>
+<p><span class="badge bg">PHASE 6</span> &nbsp; Duration: 3 weeks &nbsp;·&nbsp; Focus: Go Live</p>
+
+<h3>Week 26: Staging Environment</h3>
+<ul>
+  <li>Deploy full stack to AWS staging environment</li>
+  <li>Configure Supabase production project (separate from dev)</li>
+  <li>Set up Redis (ElastiCache) for production</li>
+  <li>Environment variable management via AWS Secrets Manager</li>
+  <li>SSL certificate configuration</li>
+  <li>Smoke testing on staging</li>
+</ul>
+
+<h3>Week 27: Production Deployment</h3>
+<ul>
+  <li>DNS setup: compliance.rootedai.co.in (or adhi.rootedai.co.in)</li>
+  <li>Deploy backend to ECS Fargate (2+ FastAPI instances, 2+ Celery workers, 1 Beat)</li>
+  <li>Deploy frontend to Vercel with custom domain</li>
+  <li>Configure CloudFront CDN</li>
+  <li>Set up monitoring: Sentry (errors), LogRocket (sessions), CloudWatch (infra)</li>
+  <li>Alerting: PagerDuty/Slack for production errors</li>
+  <li>Database backups: daily automated snapshots</li>
+</ul>
+
+<h3>Week 28: Launch</h3>
+<ul>
+  <li>Final production smoke test</li>
+  <li>Seed production regulation database (EU AI Act, NIST, DPDP, AIGC)</li>
+  <li>Create marketing landing page</li>
+  <li>Prepare demo video and documentation</li>
+  <li>Launch checklist sign-off</li>
+  <li><strong>🚀 Public beta launch</strong></li>
+</ul>
+
+<h4>Launch Checklist</h4>
+<table>
+  <tr><th>Item</th><th>Status</th></tr>
+  <tr><td>All critical bugs resolved</td><td>☐</td></tr>
+  <tr><td>Security audit passed</td><td>☐</td></tr>
+  <tr><td>Performance benchmarks met</td><td>☐</td></tr>
+  <tr><td>Monitoring &amp; alerting active</td><td>☐</td></tr>
+  <tr><td>Backup &amp; recovery tested</td><td>☐</td></tr>
+  <tr><td>SSL/TLS configured</td><td>☐</td></tr>
+  <tr><td>Terms of Service &amp; Privacy Policy published</td><td>☐</td></tr>
+  <tr><td>Documentation complete</td><td>☐</td></tr>
+  <tr><td>Billing system tested</td><td>☐</td></tr>
+  <tr><td>4+ regulations loaded and validated</td><td>☐</td></tr>
+</table>
+
+<!-- 11 -->
+<div class="pb"></div>
+<h2>11. Phase 7: Post-Launch (Weeks 29+)</h2>
+<p><span class="badge bb">PHASE 7</span> &nbsp; Ongoing &nbsp;·&nbsp; Focus: Growth &amp; Iteration</p>
+
+<h3>Beta User Onboarding (Weeks 29–32)</h3>
+<ul>
+  <li>Onboard 10–20 beta companies (free/discounted tier)</li>
+  <li>Weekly feedback calls with early adopters</li>
+  <li>Bug fix sprints (1-week cycles)</li>
+  <li>Feature prioritization based on user feedback</li>
+</ul>
+
+<h3>Iteration Cycles (Weeks 33+)</h3>
+<ul>
+  <li>Bi-weekly feature releases based on feedback</li>
+  <li>Regulation database expansion (US state laws, sector-specific regulations)</li>
+  <li>Performance optimization based on production metrics</li>
+  <li>Multi-language support (Hindi, Tamil via Sarvam AI integration)</li>
+</ul>
+
+<h3>Marketing Support</h3>
+<ul>
+  <li>Content marketing: blog posts on AI compliance topics</li>
+  <li>Webinars: "EU AI Act Compliance for Indian IT Companies"</li>
+  <li>Conference presence: NASSCOM, AI/ML meetups</li>
+  <li>LinkedIn thought leadership from founder</li>
+  <li>Case studies from beta customers</li>
+</ul>
+
+<!-- 12 -->
+<div class="pb"></div>
+<h2>12. Risk Register</h2>
+<table>
+  <tr><th>Risk</th><th>Impact</th><th>Probability</th><th>Mitigation</th></tr>
+  <tr><td><strong>Solo dev burnout</strong></td><td>🔴 High</td><td>Medium</td><td>Strict sprint boundaries, AI pair-programming, consider contractor for frontend</td></tr>
+  <tr><td><strong>Regulatory accuracy</strong></td><td>🔴 High</td><td>Medium</td><td>Legal advisor review, disclaimers ("not legal advice"), regular content audits</td></tr>
+  <tr><td><strong>LLM hallucination</strong></td><td>🔴 High</td><td>Medium</td><td>RAG with source citations, confidence scoring, human review for critical outputs</td></tr>
+  <tr><td><strong>Gemini API changes/pricing</strong></td><td>🟡 Medium</td><td>Low</td><td>Abstract LLM layer, easy swap to Claude/GPT-4, cache frequent queries</td></tr>
+  <tr><td><strong>Supabase limits</strong></td><td>🟡 Medium</td><td>Low</td><td>Pro plan from launch, migration path to self-hosted PostgreSQL if needed</td></tr>
+  <tr><td><strong>Slow market adoption</strong></td><td>🟡 Medium</td><td>Medium</td><td>Freemium tier, content marketing, conference presence, build in public</td></tr>
+  <tr><td><strong>Regulation changes</strong></td><td>🟢 Low</td><td>High</td><td>This IS the product — continuous regulation updates are a feature</td></tr>
+  <tr><td><strong>Security breach</strong></td><td>🔴 High</td><td>Low</td><td>RLS, encryption, security audit, minimal data collection, bug bounty post-launch</td></tr>
+  <tr><td><strong>Competitor launch</strong></td><td>🟡 Medium</td><td>Medium</td><td>Speed to market, India-first pricing, unique multimodal heritage</td></tr>
+  <tr><td><strong>Scope creep</strong></td><td>🟡 Medium</td><td>High</td><td>Strict scope definition, MVP mindset, defer non-core features to v2</td></tr>
+</table>
+
+<!-- 13 -->
+<h2>13. Budget Estimate</h2>
+<h3>Monthly Infrastructure Costs (Post-Launch)</h3>
+<table>
+  <tr><th>Service</th><th>Tier</th><th>Monthly Cost</th></tr>
+  <tr><td>Supabase</td><td>Pro</td><td>$25</td></tr>
+  <tr><td>AWS ECS Fargate (2 services)</td><td>0.5 vCPU, 1GB each</td><td>~$70</td></tr>
+  <tr><td>AWS ElastiCache Redis</td><td>cache.t3.micro</td><td>~$15</td></tr>
+  <tr><td>Vercel</td><td>Pro</td><td>$20</td></tr>
+  <tr><td>CloudFront CDN</td><td>Usage-based</td><td>~$10</td></tr>
+  <tr><td>Google Gemini API</td><td>Pay-as-you-go</td><td>~$50–200</td></tr>
+  <tr><td>Sentry</td><td>Team</td><td>$26</td></tr>
+  <tr><td>Domain + SSL</td><td>Annual</td><td>~$5</td></tr>
+  <tr><td>SendGrid (email)</td><td>Free/Essentials</td><td>$0–20</td></tr>
+  <tr><td colspan="2"><strong>Total Monthly</strong></td><td><strong>$220–390</strong></td></tr>
+</table>
+
+<h3>One-Time / Development Costs</h3>
+<table>
+  <tr><th>Item</th><th>Estimate</th></tr>
+  <tr><td>UI/UX Design (contract)</td><td>₹50K–1L</td></tr>
+  <tr><td>Frontend developer (contract, 2 months)</td><td>₹1–2L</td></tr>
+  <tr><td>Legal review of compliance content</td><td>₹50K–1L</td></tr>
+  <tr><td>AI coding tools (Cursor Pro, etc.)</td><td>$20/mo</td></tr>
+  <tr><td colspan="1"><strong>Total One-Time</strong></td><td><strong>₹2–4L ($2.5–5K)</strong></td></tr>
+</table>
+
+<!-- 14 -->
+<div class="pb"></div>
+<h2>14. Milestones &amp; Timeline</h2>
+
+<table>
+  <tr><th>Week</th><th>Milestone</th><th>Phase</th><th>Key Deliverable</th></tr>
+  <tr><td>Week 3</td><td><strong>Foundation Complete</strong></td><td><span class="badge bb">P1</span></td><td>Auth working, DB schema live, UI shell ready</td></tr>
+  <tr><td>Week 5</td><td><strong>AI System Registry Live</strong></td><td><span class="badge bg">P2</span></td><td>Full CRUD for companies + AI systems</td></tr>
+  <tr><td>Week 7</td><td><strong>Regulation Engine Live</strong></td><td><span class="badge bg">P2</span></td><td>4 regulations loaded, RAG chat working</td></tr>
+  <tr><td>Week 9</td><td><strong>Risk Classifier Live</strong></td><td><span class="badge bg">P2</span></td><td>Auto-classification + compliance checks</td></tr>
+  <tr><td>Week 10</td><td><strong>MVP Dashboard</strong></td><td><span class="badge bg">P2</span></td><td>Full dashboard with live data — internal demo</td></tr>
+  <tr><td>Week 12</td><td><strong>Bias Auditor Live</strong></td><td><span class="badge bp">P3</span></td><td>Bias audits + model card generation</td></tr>
+  <tr><td>Week 14</td><td><strong>Monitoring Active</strong></td><td><span class="badge bp">P3</span></td><td>Continuous monitoring + webhook alerts</td></tr>
+  <tr><td>Week 16</td><td><strong>Feature Complete</strong></td><td><span class="badge bp">P3</span></td><td>All v1.0 features built — incidents, reports, cross-border</td></tr>
+  <tr><td>Week 18</td><td><strong>SaaS Ready</strong></td><td><span class="badge by">P4</span></td><td>Billing, tiers, onboarding flow</td></tr>
+  <tr><td>Week 22</td><td><strong>Enterprise Ready</strong></td><td><span class="badge by">P4</span></td><td>API keys, CI/CD integration, agent monitor</td></tr>
+  <tr><td>Week 25</td><td><strong>QA Complete</strong></td><td><span class="badge br">P5</span></td><td>All tests passing, security audit cleared</td></tr>
+  <tr><td>Week 28</td><td><strong>🚀 PUBLIC BETA LAUNCH</strong></td><td><span class="badge bg">P6</span></td><td>Production deployment, first users</td></tr>
+  <tr><td>Week 32</td><td><strong>10+ Beta Companies</strong></td><td><span class="badge bb">P7</span></td><td>Validated product-market fit</td></tr>
+</table>
+
+<div class="diagram">
+GANTT-STYLE OVERVIEW:
+
+Wk:  1──3│  4──────10│  11──────16│  17──────22│  23─25│  26─28│  29+
+     ████│  █████████│  ██████████│  ██████████│  █████│  █████│  ████→
+     P1  │    P2     │     P3     │     P4     │  P5  │  P6  │  P7
+     Plan│  Core     │  Advanced  │  Enterprise│  QA  │Launch│ Grow
+     3wk │  7 weeks  │  6 weeks   │  6 weeks   │ 3 wk│ 3 wk │ ∞
+
+Key Sprints:
+  S1: Auth+Systems  S2: Regulations  S3: Classification  S4: Dashboard
+  S5: Bias+Cards    S6: Monitoring   S7: Incidents       S8: Reports
+  S9: Billing       S10: API         S11: Agents
+</div>
+
+<!-- 15 -->
+<div class="pb"></div>
+<h2>15. Success Metrics</h2>
+
+<table>
+  <tr><th>Phase</th><th>KPI</th><th>Target</th></tr>
+  <tr><td><strong>Phase 1</strong></td><td>Development velocity</td><td>All foundation tasks completed in 3 weeks</td></tr>
+  <tr><td><strong>Phase 2</strong></td><td>Feature completeness</td><td>4 core features working end-to-end</td></tr>
+  <tr><td></td><td>Classification accuracy</td><td>≥85% agreement with manual expert classification</td></tr>
+  <tr><td></td><td>RAG answer quality</td><td>≥80% factually correct with proper citations</td></tr>
+  <tr><td><strong>Phase 3</strong></td><td>Feature completeness</td><td>All v1.0 features built and integrated</td></tr>
+  <tr><td></td><td>Bias audit coverage</td><td>4+ fairness metrics implemented</td></tr>
+  <tr><td><strong>Phase 4</strong></td><td>SaaS readiness</td><td>Billing working, 3 tiers configured</td></tr>
+  <tr><td><strong>Phase 5</strong></td><td>Test coverage</td><td>≥80% backend, ≥60% frontend</td></tr>
+  <tr><td></td><td>Security</td><td>Zero critical/high vulnerabilities</td></tr>
+  <tr><td></td><td>Performance</td><td>P95 API latency &lt;500ms, vector search &lt;200ms</td></tr>
+  <tr><td><strong>Phase 6</strong></td><td>Uptime</td><td>99.5% in first month</td></tr>
+  <tr><td><strong>Phase 7</strong></td><td>Beta users</td><td>10+ companies in first 4 weeks</td></tr>
+  <tr><td></td><td>NPS</td><td>≥40 from beta users</td></tr>
+  <tr><td></td><td>Conversion</td><td>≥20% free → paid within 60 days</td></tr>
+</table>
+
+<!-- 16 -->
+<h2>16. Dependencies &amp; Assumptions</h2>
+
+<h3>Dependencies</h3>
+<ul>
+  <li><strong>Supabase</strong> — platform availability and pgvector support stability</li>
+  <li><strong>Google Gemini API</strong> — continued availability and reasonable pricing for 1.5 Flash</li>
+  <li><strong>Regulatory content</strong> — access to full text of EU AI Act, NIST AI RMF, India DPDP, China AIGC</li>
+  <li><strong>AWS</strong> — ECS Fargate, ElastiCache, Secrets Manager availability in ap-south-1</li>
+  <li><strong>Design contractor</strong> — availability during Phase 1 (Weeks 2–3)</li>
+</ul>
+
+<h3>Assumptions</h3>
+<ul>
+  <li>Solo developer (founder) available full-time for the 28-week build period</li>
+  <li>AI coding assistants provide 1.5–2x productivity multiplier consistently</li>
+  <li>EU AI Act requirements remain stable through development (major provisions effective Aug 2025)</li>
+  <li>Indian IT companies serving EU/US clients represent a viable initial market</li>
+  <li>₹50K–₹2L/month pricing is acceptable for the target market</li>
+  <li>Legal disclaimer ("not legal advice") is sufficient for v1.0; formal legal review before enterprise sales</li>
+  <li>Open-source bias/fairness libraries (AIF360, Fairlearn) provide sufficient algorithmic foundation</li>
+  <li>Infrastructure costs remain within $220–400/month range at launch scale</li>
+</ul>
+
+<div class="footer">
+  <div class="rootedai">ROOTEDAI</div>
+  <p style="margin-top:8px">Adhi Compliance — Software Development Plan v1.0 — © 2026 RootedAI — Confidential</p>
+  <p>rootedai.co.in · info@rootedai.co.in</p>
+</div>
+
+</body>
+</html>

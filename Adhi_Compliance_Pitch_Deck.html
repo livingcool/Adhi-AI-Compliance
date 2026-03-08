@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Adhi Compliance — Pitch Deck</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Montserrat:wght@300;400;500;600;700&display=swap');
+  :root{--bg:rgb(5,5,5);--navy:rgb(2,6,23);--navy2:rgb(15,23,42);--navy3:rgb(23,37,84);--blue:rgb(59,130,246);--blue2:rgb(96,165,250);--purple:rgb(168,85,247);--purple2:rgb(192,132,252);--green:rgb(34,197,94);--red:rgb(239,68,68);--text:rgb(255,255,255);--text2:rgb(163,163,163);--text3:rgba(255,255,255,0.6);--muted:rgb(148,163,184);--card:rgba(255,255,255,0.06);--card2:rgba(255,255,255,0.1);--border:rgba(255,255,255,0.08)}
+  *{margin:0;padding:0;box-sizing:border-box}
+  @page{size:297mm 167mm;margin:0}
+  body{font-family:'Montserrat',sans-serif;background:var(--bg);color:var(--text);-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:11pt}
+
+  /* Each slide = full page landscape */
+  .slide{width:297mm;height:167mm;position:relative;overflow:hidden;page-break-after:always;display:flex;flex-direction:column;padding:30px 50px}
+
+  /* Grid dot pattern background */
+  .slide::before{content:'';position:absolute;top:0;left:0;width:100%;height:100%;background-image:radial-gradient(rgba(59,130,246,0.12) 1px,transparent 1px);background-size:28px 28px;pointer-events:none;z-index:0}
+
+  /* Geometric wireframe decoration */
+  .slide::after{content:'';position:absolute;top:-60px;left:-60px;width:300px;height:300px;border:1px solid rgba(255,255,255,0.03);transform:rotate(45deg);z-index:0}
+
+  .slide>*{position:relative;z-index:1}
+
+  /* Topbar with logo */
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:auto;padding-bottom:10px}
+  .topbar .logo{font-family:'Outfit',sans-serif;font-size:9pt;font-weight:700;letter-spacing:5px;text-transform:uppercase;color:var(--text3)}
+  .topbar .page{font-size:8pt;color:var(--muted)}
+
+  /* Shared heading styles */
+  .sh{font-family:'Outfit',sans-serif;font-weight:900;font-style:italic;color:var(--text);line-height:1.1}
+  .sub{color:var(--text2);font-size:12pt;font-weight:400;margin-top:12px;line-height:1.6;max-width:75%}
+
+  /* Stat numbers */
+  .stat{font-family:'Outfit',sans-serif;font-weight:900;font-size:36pt}
+  .stat-label{font-size:10pt;color:var(--text2);margin-top:4px}
+
+  /* Feature cards */
+  .fcard{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .fcard .icon{font-size:24pt;margin-bottom:10px}
+  .fcard h4{font-family:'Outfit',sans-serif;font-weight:700;font-size:11pt;margin-bottom:6px}
+  .fcard p{font-size:8.5pt;color:var(--text2);line-height:1.5}
+
+  /* Pill buttons */
+  .pill{display:inline-block;padding:10px 28px;border-radius:50px;font-family:'Outfit',sans-serif;font-weight:600;font-size:10pt;letter-spacing:0.5px}
+  .pill-white{background:var(--text);color:var(--bg)}
+  .pill-outline{border:1px solid var(--text);color:var(--text);background:transparent}
+  .pill-blue{background:var(--blue);color:var(--text)}
+
+  /* Pricing cards */
+  .pcard{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;text-align:center;flex:1;backdrop-filter:blur(10px)}
+  .pcard.featured{border-color:var(--blue);background:rgba(59,130,246,0.08)}
+  .pcard .tier{font-family:'Outfit',sans-serif;font-weight:700;font-size:10pt;text-transform:uppercase;letter-spacing:2px;color:var(--blue2)}
+  .pcard .price{font-family:'Outfit',sans-serif;font-weight:900;font-size:28pt;margin:12px 0 4px}
+  .pcard .per{font-size:9pt;color:var(--muted)}
+  .pcard ul{list-style:none;text-align:left;margin:16px 0;padding:0;font-size:9pt;color:var(--text2)}
+  .pcard ul li{padding:5px 0;border-bottom:1px solid var(--border)}
+  .pcard ul li::before{content:'✓ ';color:var(--green)}
+
+  /* Timeline */
+  .tline{display:flex;align-items:flex-start;gap:0;margin-top:20px}
+  .tnode{flex:1;text-align:center;position:relative;padding-top:30px}
+  .tnode::before{content:'';position:absolute;top:10px;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--blue),var(--purple))}
+  .tnode::after{content:'';position:absolute;top:4px;left:50%;transform:translateX(-50%);width:14px;height:14px;border-radius:50%;background:var(--blue);border:2px solid var(--bg)}
+  .tnode h4{font-family:'Outfit',sans-serif;font-size:10pt;font-weight:700;color:var(--text)}
+  .tnode p{font-size:8pt;color:var(--text2);margin-top:4px}
+
+  .bottom-bar{margin-top:auto;display:flex;justify-content:space-between;align-items:center;padding-top:10px;font-size:7.5pt;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<!-- SLIDE 1: COVER -->
+<div class="slide" style="background:linear-gradient(160deg,var(--bg) 0%,var(--navy) 30%,var(--navy3) 60%,rgb(30,27,75) 100%);justify-content:center;align-items:center;text-align:center">
+  <div style="position:absolute;top:40px;left:50px;font-family:'Outfit',sans-serif;font-size:9pt;font-weight:700;letter-spacing:5px;text-transform:uppercase;color:var(--text3)">ROOTEDAI</div>
+  <div style="margin-bottom:20px">
+    <div style="width:80px;height:80px;border-radius:20px;background:linear-gradient(135deg,var(--blue),var(--purple));margin:0 auto 30px;display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-weight:900;font-size:28pt">A</div>
+  </div>
+  <h1 class="sh" style="font-size:52pt">Adhi Compliance</h1>
+  <p style="font-size:16pt;color:var(--blue2);margin-top:12px;font-weight:300;letter-spacing:2px">AI Compliance, Automated.</p>
+  <p style="font-size:10pt;color:var(--muted);margin-top:40px;max-width:550px;line-height:1.8">AI-powered solutions with built-in safety, compliance, and DPDP readiness for the modern enterprise.</p>
+  <div style="margin-top:40px;display:flex;gap:16px;justify-content:center">
+    <span class="pill pill-white">Get Started →</span>
+    <span class="pill pill-outline">Learn More</span>
+  </div>
+  <div class="bottom-bar" style="position:absolute;bottom:30px;left:50px;right:50px">
+    <span>rootedai.co.in</span>
+    <span>Confidential — February 2026</span>
+  </div>
+</div>
+
+<!-- SLIDE 2: THE PROBLEM -->
+<div class="slide" style="background:linear-gradient(160deg,var(--bg) 0%,rgb(20,5,5) 50%,var(--bg) 100%)">
+  <div class="topbar"><span class="logo">ROOTEDAI</span><span class="page">02 / 15</span></div>
+  <h2 class="sh" style="font-size:38pt;margin-bottom:8px">The <span style="color:var(--red)">Problem</span></h2>
+  <p class="sub" style="max-width:100%">AI companies face an impossible compliance landscape — and there's no infrastructure to manage it.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:30px;margin-top:30px;flex:1;align-content:center">
+    <div style="text-align:center">
+      <div class="stat" style="color:var(--red)">€35M+</div>
+      <div class="stat-label">Maximum fines under<br>EU AI Act per violation</div>
+    </div>
+    <div style="text-align:center">
+      <div class="stat" style="color:var(--red)">700+</div>
+      <div class="stat-label">AI-related bills introduced<br>across 45 US states</div>
+    </div>
+    <div style="text-align:center">
+      <div class="stat" style="color:var(--red)">0</div>
+      <div class="stat-label">Affordable compliance platforms<br>built for the Indian market</div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px">
+    <div class="fcard" style="border-color:rgba(239,68,68,0.2);background:rgba(239,68,68,0.05)">
+      <h4 style="color:var(--red)">Regulatory Chaos</h4>
+      <p>EU AI Act, US state laws, India's DPDP, China's AIGC — each with different requirements, deadlines, and penalties. No unified compliance view exists.</p>
+    </div>
+    <div class="fcard" style="border-color:rgba(239,68,68,0.2);background:rgba(239,68,68,0.05)">
+      <h4 style="color:var(--red)">Manual & Expensive</h4>
+      <p>Existing solutions cost $100K+/year and require dedicated compliance teams. Startups and mid-market companies are completely unserved.</p>
+    </div>
+  </div>
+  <div class="bottom-bar"><span>Adhi Compliance — Pitch Deck</span><span>rootedai.co.in</span></div>
+</div>
+
+<!-- SLIDE 3: THE MARKET -->
+<div class="slide" style="background:linear-gradient(160deg,var(--bg) 0%,var(--navy) 40%,var(--navy3) 100%)">
+  <div class="topbar"><span class="logo">ROOTEDAI</span><span class="page">03 / 15</span></div>
+  <h2 class="sh" style="font-size:38pt;margin-bottom:8px">The <span style="background:linear-gradient(135deg,var(--blue),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent">Market</span></h2>
+  <p class="sub">A massive, fast-growing market with near-zero incumbent solutions for the mid-market.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:24px;margin-top:30px">
+    <div class="fcard" style="text-align:center">
+      <div class="stat" style="font-size:30pt;background:linear-gradient(135deg,var(--blue),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent">$3–5B</div>
+      <div class="stat-label">AI compliance market<br>by 2028</div>
+    </div>
+    <div class="fcard" style="text-align:center">
+      <div class="stat" style="font-size:30pt;color:var(--blue)">21.3%</div>
+      <div class="stat-label">Rise in AI legislation<br>globally YoY</div>
+    </div>
+    <div class="fcard" style="text-align:center">
+      <div class="stat" style="font-size:30pt;color:var(--purple)">5,700+</div>
+      <div class="stat-label">Indian IT companies<br>serving EU/US clients</div>
+    </div>
+    <div class="fcard" style="text-align:center">
+      <div class="stat" style="font-size:30pt;color:var(--green)">100%</div>
+      <div class="stat-label">Of AI deployers need<br>compliance tooling</div>
+    </div>
+  </div>
+  <div style="margin-top:30px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;backdrop-filter:blur(10px)">
+    <p style="font-size:10pt;color:var(--text2);line-height:1.7"><strong style="color:var(--text)">Why Now:</strong> The EU AI Act becomes enforceable in August 2025. Every company deploying AI in or serving the EU market must classify their systems, implement compliance measures, and maintain documentation. Indian IT companies — representing $250B+ in global services — are the first to feel this pressure from their EU/US clients.</p>
+  </div>
+  <div class="bottom-bar"><span>Adhi Compliance — Pitch Deck</span><span>rootedai.co.in</span></div>
+</div>
+
+<!-- SLIDE 4: OUR SOLUTION -->
+<div class="slide" style="background:linear-gradient(160deg,var(--bg) 0%,var(--navy) 50%,var(--navy3) 100%)">
+  <div class="topbar"><span class="logo">ROOTEDAI</span><span class="page">04 / 15</span></div>
+  <h2 class="sh" style="font-size:38pt;margin-bottom:8px">Our <span style="background:linear-gradient(135deg,var(--blue),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent">Solution</span></h2>
+  <p class="sub" style="max-width:100%">The compliance layer every AI company plugs into. One platform for risk classification, monitoring, auditing, and reporting.</p>
+  <div style="display:flex;align-items:center;justify-content:center;flex:1;gap:40px;margin-top:20px">
+    <div style="text-align:center;flex:1">
+      <div style="width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--purple));margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:40pt">🛡️</div>
+      <h3 style="font-family:'Outfit',sans-serif;font-weight:800;font-size:14pt;margin-bottom:8px">Adhi Compliance</h3>
+      <p style="font-size:9.5pt;color:var(--text2);line-height:1.6">AI-powered compliance management that understands regulations like a legal team, monitors like a security system, and reports like an auditor — at a fraction of the cost.</p>
+    </div>
+    <div style="flex:1.5">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="fcard"><h4 style="color:var(--blue2)">🎯 Auto-Classify</h4><p>AI systems automatically classified by risk level per EU AI Act and other frameworks</p></div>
+        <div class="fcard"><h4 style="color:var(--blue2)">📡 Monitor</h4><p>Continuous compliance monitoring with real-time alerts across jurisdictions</p></div>
+        <div class="fcard"><h4 style="color:var(--blue2)">⚖️ Audit</h4><p>Bias detection, fairness metrics, and automated audit reports</p></div>
+        <div class="fcard"><h4 style="color:var(--blue2)">📋 Report</h4><p>Model cards, compliance docs, and incident reports auto-generated</p></div>
+      </div>
+    </div>
+  </div>
+  <div class="bottom-bar"><span>Adhi Compliance — Pitch Deck</span><span>rootedai.co.in</span></div>
+</div>
+
+<!-- SLIDE 5: HOW IT WORKS -->
+<div class="slide" style="background:linear-gradient(160deg,var(--bg) 0%,var(--navy) 100%)">
+  <div class="topbar"><span class="logo">ROOTEDAI</span><span class="page">05 / 15</span></div>
+  <h2 class="sh" style="font-size:38pt;margin-bottom:20px">How It <span style="color:var(--blue2)">Works</span></h2>
+  <div style="display:flex;align-items:center;gap:20px;flex:1;justify-content:center">
+    <!-- Step 1 -->
+    <div style="flex:1;text-align:center">
+      <div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,var(--blue),rgba(59,130,246,0.3));margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-weight:900;font-size:32pt;border:2px solid var(--blue)">1</div>
+      <h3 style="font-family:'Outfit',sans-serif;font-weight:700;font-size:14pt;margin-bottom:8px">Register</h3>
+      <p style="font-size:9pt;color:var(--text2);line-height:1.6;padding:0 10px">Register your AI systems with metadata — purpose, model type, deployment region, affected populations</p>
+    </div>
+    <!-- Arrow -->
+    <div style="font-size:28pt;color:var(--blue);margin-bottom:40px">→</div>
+    <!-- Step 2 -->
+    <div style="flex:1;text-align:center">
+      <div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,var(--purple),rgba(168,85,247,0.3));margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-weight:900;font-size:32pt;border:2px solid var(--purple)">2</div>
+      <h3 style="font-family:'Outfit',sans-serif;font-weight:700;font-size:14pt;margin-bottom:8px">Auto-Classify & Monitor</h3>
+      <p style="font-size:9pt;color:var(--text2);line-height:1.6;padding:0 10px">AI automatically classifies risk level, maps regulations, and begins continuous compliance monitoring</p>
+    </div>
+    <!-- Arrow -->
+    <div style="font-size:28pt;color:var(--purple);margin-bottom:40px">→</div>
+    <!-- Step 3 -->
+    <div style="flex:1;text-align:center">
+      <div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,var(--green),rgba(34,197,94,0.3));margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-weight:900;font-size:32pt;border:2px solid var(--green)">3</div>
+      <h3 style="font-family:'Outfit',sans-serif;font-weight:700;font-size:14pt;margin-bottom:8px">Stay Compliant</h3>
+      <p style="font-size:9pt;color:var(--text2);line-height:1.6;padding:0 10px">Get alerts on regulatory changes, run audits, generate reports, and manage incidents — all from one dashboard</p>
+    </div>
+  </div>
+  <div class="bottom-bar"><span>Adhi Compliance — Pitch Deck</span><span>rootedai.co.in</span></div>
+</div>
+
+<!-- SLIDE 6: KEY FEATURES -->
+<div class="slide" style="background:linear-gradient(160deg,var(--bg) 0%,var(--navy) 50%,var(--navy2) 100%)">
+  <div class="topbar"><span class="logo">ROOTEDAI</span><span class="page">06 / 15</span></div>
+  <h2 class="sh" style="font-size:34pt;margin-bottom:20px">Key <span style="color:var(--blue2)">Features</span></h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;flex:1;align-content:center">
+    <div class="fcard">
+      <div class="icon">⚡</div>
+      <h4>Risk Classification Engine</h4>
+      <p>AI-powered auto-classification per EU AI Act risk tiers. Rule-based + LLM analysis with confidence scoring and human review flags.</p>
+    </div>
+    <div class="fcard">
+      <div class="icon">⚖️</div>
+      <h4>Bias Auditor</h4>
+      <p>Upload datasets, run fairness metrics (demographic parity, equalized odds, disparate impact), get actionable recommendations.</p>
+    </div>
+    <div class="fcard">
+      <div class="icon">📡</div>
+      <h4>Regulation Tracker</h4>
+      <p>Searchable knowledge base of AI regulations. Semantic search with RAG-powered Q&A. Automated update monitoring.</p>
+    </div>
+    <div class="fcard">
+      <div class="icon">📄</div>
+      <h4>Model Cards & Reports</h4>
+      <p>Auto-generate model cards, compliance reports, and transparency documents. PDF and Excel export ready for auditors.</p>
+    </div>
+    <div class="fcard">
+      <div class="icon">🚨</div>
+      <h4>Incident Reporting</h4>
+      <p>EU AI Act Article 62 compliant workflow. Guided forms, authority mapping, 15-day deadline tracking, auto-generated reports.</p>
+    </div>
+    <div class="fcard">
+      <div class="icon">🌍</div>
+      <h4>Cross-Border Mapper</h4>
+      <p>Unified compliance view across EU, US, India, and China. Map requirements across jurisdictions. Gap analysis for multi-region deployments.</p>
+    </div>
+  </div>
+  <div class="bottom-bar"><span>Adhi Compliance — Pitch Deck</span><span>rootedai.co.in</span></div>
+</div>
+
+<!-- SLIDE 7: PRODUCT DASHBOARD -->
+<div class="slide" style="background:var(--bg)">
+  <div class="topbar"><span class="logo">ROOTEDAI</span><span class="page">07 / 15</span></div>
+  <h2 class="sh" style="font-size:34pt;margin-bottom:16px">Product <span style="color:var(--blue2)">Dashboard</span></h2>
+  <!-- Mock Dashboard UI -->
+  <div style="flex:1;display:flex;gap:12px;border-radius:14px;overflow:hidden;border:1px solid var(--border);background:rgb(8,8,12)">
+    <!-- Sidebar -->
+    <div style="width:180px;background:rgba(255,255,255,0.03);padding:16px;border-right:1px solid var(--border);font-size:8pt">
+      <div style="font-family:'Outfit',sans-serif;font-weight:800;font-size:11pt;margin-bottom:20px;background:linear-gradient(135deg,var(--blue),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent">Adhi</div>
+      <div style="padding:6px 10px;background:rgba(59,130,246,0.15);border-radius:6px;color:var(--blue2);margin-bottom:4px">◉ Dashboard</div>
+      <div style="padding:6px 10px;color:var(--muted);margin-bottom:4px">◎ AI Systems</div>
+      <div style="padding:6px 10px;color:var(--muted);margin-bottom:4px">◎ Regulations</div>
+      <div style="padding:6px 10px;color:var(--muted);margin-bottom:4px">◎ Compliance Chat</div>
+      <div style="padding:6px 10px;color:var(--muted);margin-bottom:4px">◎ Bias Auditor</div>
+      <div style="padding:6px 10px;color:var(--muted);margin-bottom:4px">◎ Incidents</div>
+      <div style="padding:6px 10px;color:var(--muted);margin-bottom:4px">◎ Reports</div>
+      <div style="padding:6px 10px;color:var(--muted)">◎ Settings</div>
+    </div>
+    <!-- Main Content -->
+    <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:12px">
+      <!-- Top metrics -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;backdrop-filter:blur(10px)">
+          <div style="font-size:7pt;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Compliance Score</div>
+          <div style="font-family:'Outfit',sans-serif;font-weight:900;font-size:24pt;color:var(--green);margin-top:4px">87%</div>
+        </div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px">
+          <div style="font-size:7pt;color:var(--muted);text-transform:uppercase;letter-spacing:1px">AI Systems</div>
+          <div style="font-family:'Outfit',sans-serif;font-weight:900;font-size:24pt;color:var(--blue);margin-top:4px">12</div>
+        </div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px">
+          <div style="font-size:7pt;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Active Alerts</div>
+          <div style="font-family:'Outfit',sans-serif;font-weight:900;font-size:24pt;color:var(--red);margin-top:4px">3</div>
+        </div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px">
+          <div style="font-size:7pt;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Next Deadline</div>
+          <div style="font-family:'Outfit',sans-serif;font-weight:900;font-size:18pt;color:var(--purple2);margin-top:4px">14d</div>
+        </div>
+      </div>
+      <!-- Middle row -->
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px;flex:1">
+        <!-- Risk distribution -->
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px">
+          <div style="font-size:8pt;color:var(--muted);margin-bottom:10px;font-weight:600">Risk Distribution</div>
+          <div style="display:flex;gap:8px;align-items:flex-end;height:60px">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+              <div style="width:100%;background:var(--green);border-radius:4px;height:50px"></div>
+              <span style="font-size:6pt;color:var(--muted)">Minimal (6)</span>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+              <div style="width:100%;background:rgb(234,179,8);border-radius:4px;height:30px"></div>
+              <span style="font-size:6pt;color:var(--muted)">Limited (3)</span>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+              <div style="width:100%;background:rgb(249,115,22);border-radius:4px;height:20px"></div>
+              <span style="font-size:6pt;color:var(--muted)">High (2)</span>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+              <div style="width:100%;background:var(--red);border-radius:4px;height:8px"></div>
+              <span style="font-size:6pt;color:var(--muted)">Unacceptable (1)</span>
+            </div>
+          </div>
+        </div>
+        <!-- Alerts feed -->
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px">
+          <div style="font-size:8pt;color:var(--muted);margin-bottom:8px;font-weight:600">Recent Alerts</div>
+          <div style="font-size:7pt;padding:6px 0;border-bottom:1px solid var(--border)"><span style="color:var(--red)">●</span> EU AI Act deadline in 14 days</div>
+          <div style="font-size:7pt;padding:6px 0;border-bottom:1px solid var(--border)"><span style="color:rgb(234,179,8)">●</span> Bias drift detected: RecoEngine</div>
+          <div style="font-size:7pt;padding:6px 0"><span style="color:var(--blue)">●</span> New regulation: India DPDP update</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="bottom-bar"><span>Adhi Compliance — Pitch Deck</span><span>rootedai.co.in</span></div>
+</div>
+
+<!-- SLIDE 8: TECHNOLOGY -->
+<div class="slide" style="background:linear-gradient(160deg,var(--bg) 0%,var(--navy) 50%,var(--navy3) 100%)">
+  <div class="topbar"><span class="logo">ROOTEDAI</span><span class="page">08 / 15</span></div>
+  <h2 class="sh" style="font-size:34pt;margin-bottom:12px">Technology <span style="color:var(--blue2)">Stack</span></h2>
+  <p class="sub">Built on modern, battle-tested infrastructure with AI at its core.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:20px;flex:1;align-content:center">
+    <div class="fcard">
+      <h4 style="color:var(--blue2)">Frontend</h4>
+      <p>Next.js 16 · TypeScript · Tailwind CSS · Framer Motion · TanStack Query · Recharts</p>
+    </div>
+    <div class="fcard">
+      <h4 style="color:var(--purple2)">Backend</h4>
+      <p>FastAPI · Python 3.10+ · Celery · Redis · SQLAlchemy · Pydantic · Alembic</p>
+    </div>
+    <div class="fcard">
+      <h4 style="color:var(--green)">AI / ML</h4>
+      <p>Google Gemini 1.5 Flash · sentence-transformers · pgvector · Sarvam AI (Indian languages)</p>
+    </div>
+    <div class="fcard">
+      <h4 style="color:var(--blue2)">Database</h4>
+      <p>Supabase PostgreSQL · pgvector · Row-Level Security · Redis caching</p>
+    </div>
+    <div class="fcard">
+      <h4 style="color:var(--purple2)">Infrastructure</h4>
+      <p>AWS ECS Fargate · Docker · Vercel · CloudFront CDN · Supabase Auth</p>
+    </div>
+    <div class="fcard">
+      <h4 style="color:var(--green)">Heritage</h4>
+      <p>Built on multimodal RAG engine — can ingest video, audio, PDF, images for compliance evidence analysis</p>
+    </div>
+  </div>
+  <div class="bottom-bar"><span>Adhi Compliance — Pitch Deck</span><span>rootedai.co.in</span></div>
+</div>
+
+<!-- SLIDE 9: COMPETITIVE LANDSCAPE -->
+<div class="slide" style="background:linear-gradient(160deg,var(--bg) 0%,var(--navy) 100%)">
+  <div class="topbar"><span class="logo">ROOTEDAI</span><span class="page">09 / 15</span></div>
+  <h2 class="sh" style="font-size:34pt;margin-bottom:12px">Competitive <span style="color:var(--blue2)">Advantage</span></h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:16px;flex:1;align-content:center">
+    <!-- Competitor comparison -->
+    <div>
+      <table style="width:100%;border-collapse:collapse;font-size:8.5pt">
+        <tr>
+          <th style="background:linear-gradient(135deg,var(--blue),var(--purple));color:var(--text);padding:10px;text-align:left;font-family:'Outfit',sans-serif;border-radius:8px 0 0 0">Feature</th>
+          <th style="background:linear-gradient(135deg,var(--blue),var(--purple));color:var(--text);padding:10px;text-align:center">Credo AI</th>
+          <th style="background:linear-gradient(135deg,var(--blue),var(--purple));color:var(--text);padding:10px;text-align:center">Holistic AI</th>
+          <th style="background:linear-gradient(135deg,var(--blue),var(--purple));color:var(--text);padding:10px;text-align:center;border-radius:0 8px 0 0">Adhi</th>
+        </tr>
+        <tr><td style="padding:8px;border-bottom:1px solid var(--border);color:var(--text2)">Risk Classification</td><td style="text-align:center;border-bottom:1px solid var(--border)">✓</td><td style="text-align:center;border-bottom:1px solid var(--border)">✓</td><td style="text-align:center;border-bottom:1px solid var(--border);color:var(--green)">✓</td></tr>
+        <tr><td style="padding:8px;border-bottom:1px solid var(--border);color:var(--text2);background:var(--card)">Bias Auditing</td><td style="text-align:center;border-bottom:1px solid var(--border);background:var(--card)">✓</td><td style="text-align:center;border-bottom:1px solid var(--border);background:var(--card)">✓</td><td style="text-align:center;border-bottom:1px solid var(--border);background:var(--card);color:var(--green)">✓</td></tr>
+        <tr><td style="padding:8px;border-bottom:1px solid var(--border);color:var(--text2)">RAG Compliance Chat</td><td style="text-align:center;border-bottom:1px solid var(--border);color:var(--red)">✗</td><td style="text-align:center;border-bottom:1px solid var(--border);color:var(--red)">✗</td><td style="text-align:center;border-bottom:1px solid var(--border);color:var(--green)">✓</td></tr>
+        <tr><td style="padding:8px;border-bottom:1px solid var(--border);color:var(--text2);background:var(--card)">Self-Serve SaaS</td><td style="text-align:center;border-bottom:1px solid var(--border);background:var(--card);color:var(--red)">✗</td><td style="text-align:center;border-bottom:1px solid var(--border);background:var(--card)">Partial</td><td style="text-align:center;border-bottom:1px solid var(--border);background:var(--card);color:var(--green)">✓</td></tr>
+        <tr><td style="padding:8px;border-bottom:1px solid var(--border);color:var(--text2)">India-First Pricing</td><td style="text-align:center;border-bottom:1px solid var(--border);color:var(--red)">✗</td><td style="text-align:center;border-bottom:1px solid var(--border);color:var(--red)">✗</td><td style="text-align:center;border-bottom:1px solid var(--border);color:var(--green)">✓</td></tr>
+        <tr><td style="padding:8px;border-bottom:1px solid var(--border);color:var(--text2);background:var(--card)">Multimodal Ingestion</td><td style="text-align:center;border-bottom:1px solid var(--border);background:var(--card);color:var(--red)">✗</td><td style="text-align:center;border-bottom:1px solid var(--border);background:var(--card);color:var(--red)">✗</td><td style="text-align:center;border-bottom:1px solid var(--border);background:var(--card);color:var(--green)">✓</td></tr>
+        <tr><td style="padding:8px;color:var(--text2)"><strong style="color:var(--text)">Annual Cost</strong></td><td style="text-align:center;color:var(--red);font-weight:700">$100K+</td><td style="text-align:center;color:var(--red);font-weight:700">$50K+</td><td style="text-align:center;color:var(--green);font-weight:700">₹6L (~$7K)</td></tr>
+      </table>
+    </div>
+    <!-- Our edge -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="fcard" style="border-color:rgba(59,130,246,0.2)">
+        <h4 style="color:var(--blue)">🇮🇳 India-First Pricing</h4>
+        <p>10–15x cheaper than US competitors. Built for Indian IT companies serving global clients.</p>
+      </div>
+      <div class="fcard" style="border-color:rgba(168,85,247,0.2)">
+        <h4 style="color:var(--purple2)">🤖 AI-Native Architecture</h4>
+        <p>RAG-powered compliance chat, LLM-based classification — not just a checklist tool.</p>
+      </div>
+      <div class="fcard" style="border-color:rgba(34,197,94,0.2)">
+        <h4 style="color:var(--green)">📹 Multimodal Heritage</h4>
+        <p>Built on a multimodal ingestion engine. Can process video, audio, PDF, and image evidence for compliance.</p>
+      </div>
+    </div>
+  </div>
+  <div class="bottom-bar"><span>Adhi Compliance — Pitch Deck</span><span>rootedai.co.in</span></div>
+</div>
+
+<!-- SLIDE 10: PRICING -->
+<div class="slide" style="background:linear-gradient(160deg,var(--bg) 0%,var(--navy) 100%)">
+  <div class="topbar"><span class="logo">ROOTEDAI</span><span class="page">10 / 15</span></div>
+  <h2 class="sh" style="font-size:34pt;margin-bottom:12px;text-align:center">Simple, Transparent <span style="color:var(--blue2)">Pricing</span></h2>
+  <p style="text-align:center;color:var(--text2);font-size:10pt;margin-bottom:24px">Built for the Indian market. A fraction of US competitor pricing.</p>
+  <div style="display:flex;gap:20px;flex:1;align-items:center;padding:0 20px">
+    <div class="pcard">
+      <div class="tier" style="color:var(--muted)">Starter</div>
+      <div class="price">₹50K</div>
+      <div class="per">per month</div>
+      <ul>
+        <li>Up to 5 AI systems</li>
+        <li>EU AI Act classification</li>
+        <li>Basic compliance dashboard</li>
+        <li>Monthly compliance checks</li>
+        <li>Email alerts</li>
+        <li>PDF report export</li>
+        <li>2 team members</li>
+      </ul>
+      <span class="pill pill-outline" style="font-size:8pt;padding:8px 20px">Get Started</span>
+    </div>
+    <div class="pcard featured" style="transform:scale(1.04)">
+      <div style="background:linear-gradient(135deg,var(--blue),var(--purple));color:var(--text);font-size:7pt;font-weight:700;padding:4px 14px;border-radius:50px;display:inline-block;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase">Most Popular</div>
+      <div class="tier">Growth</div>
+      <div class="price">₹2L</div>
+      <div class="per">per month</div>
+      <ul>
+        <li>Up to 25 AI systems</li>
+        <li>Multi-jurisdiction (EU, US, IN)</li>
+        <li>Bias auditor + model cards</li>
+        <li>Continuous monitoring</li>
+        <li>Slack + Teams + Email alerts</li>
+        <li>Incident reporting (Art. 62)</li>
+        <li>API access</li>
+        <li>10 team members</li>
+      </ul>
+      <span class="pill pill-blue" style="font-size:8pt;padding:8px 20px">Start Free Trial</span>
+    </div>
+    <div class="pcard">
+      <div class="tier" style="color:var(--purple2)">Enterprise</div>
+      <div class="price">Custom</div>
+      <div class="per">tailored to your needs</div>
+      <ul>
+        <li>Unlimited AI systems</li>
+        <li>All jurisdictions</li>
+        <li>Full audit suite</li>
+        <li>Agent activity monitor</li>
+        <li>CI/CD integration</li>
+        <li>Custom webhooks</li>
+        <li>Dedicated support</li>
+        <li>Unlimited team</li>
+        <li>SLA guarantee</li>
+      </ul>
+      <span class="pill pill-outline" style="font-size:8pt;padding:8px 20px">Contact Sales</span>
+    </div>
+  </div>
+  <div class="bottom-bar"><span>Adhi Compliance — Pitch Deck</span><span>rootedai.co.in</span></div>
+</div>
+
+<!-- SLIDE 11: GO-TO-MARKET -->
+<div class="slide" style="background:linear-gradient(160deg,var(--bg) 0%,var(--navy) 50%,var(--navy3) 100%)">
+  <div class="topbar"><span class="logo">ROOTEDAI</span><span class="page">11 / 15</span></div>
+  <h2 class="sh" style="font-size:34pt;margin-bottom:8px">Go-To-Market <span style="color:var(--blue2)">Strategy</span></h2>
+  <p class="sub">Start with Indian IT companies serving EU/US clients. Then expand globally.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:24px">
+    <div class="fcard" style="border-top:3px solid var(--blue)">
+      <h4 style="color:var(--blue)">Phase 1: India IT (0–6 months)</h4>
+      <p style="margin-bottom:8px"><strong style="color:var(--text)">Target:</strong> Indian IT companies serving EU clients</p>
+      <ul style="font-size:8.5pt;color:var(--text2);list-style:none;padding:0">
+        <li style="padding:3px 0">→ Direct outreach to CTO/compliance teams</li>
+        <li style="padding:3px 0">→ NASSCOM partnership / speaking</li>
+        <li style="padding:3px 0">→ Free tier for early adopters</li>
+        <li style="padding:3px 0">→ Content: "EU AI Act for Indian IT"</li>
+      </ul>
+    </div>
+    <div class="fcard" style="border-top:3px solid var(--purple)">
+      <h4 style="color:var(--purple2)">Phase 2: India Enterprise (6–12 months)</h4>
+      <p style="margin-bottom:8px"><strong style="color:var(--text)">Target:</strong> Indian enterprises deploying AI</p>
+      <ul style="font-size:8.5pt;color:var(--text2);list-style:none;padding:0">
+        <li style="padding:3px 0">→ Case studies from Phase 1</li>
+        <li style="padding:3px 0">→ Enterprise sales team (1–2 people)</li>
+        <li style="padding:3px 0">→ India DPDP compliance focus</li>
+        <li style="padding:3px 0">→ Partner with law firms</li>
+      </ul>
+    </div>
+    <div class="fcard" style="border-top:3px solid var(--green)">
+      <h4 style="color:var(--green)">Phase 3: Global (12+ months)</h4>
+      <p style="margin-bottom:8px"><strong style="color:var(--text)">Target:</strong> Global SMBs and mid-market</p>
+      <ul style="font-size:8.5pt;color:var(--text2);list-style:none;padding:0">
+        <li style="padding:3px 0">→ Self-serve global sign-up</li>
+        <li style="padding:3px 0">→ Multi-currency pricing</li>
+        <li style="padding:3px 0">→ Channel partnerships</li>
+        <li style="padding:3px 0">→ Expand regulation coverage</li>
+      </ul>
+    </div>
+  </div>
+  <div style="margin-top:20px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;text-align:center;backdrop-filter:blur(10px)">
+    <p style="font-size:10pt;color:var(--text2)"><strong style="color:var(--text)">Key Insight:</strong> Indian IT companies are the <em>bridge</em> to global markets. They <em>must</em> comply with EU/US regulations for their clients, but can't afford $100K/year US tools. We're the obvious choice.</p>
+  </div>
+  <div class="bottom-bar"><span>Adhi Compliance — Pitch Deck</span><span>rootedai.co.in</span></div>
+</div>
+
+<!-- SLIDE 12: ROADMAP -->
+<div class="slide" style="background:linear-gradient(160deg,var(--bg) 0%,var(--navy) 100%)">
+  <div class="topbar"><span class="logo">ROOTEDAI</span><span class="page">12 / 15</span></div>
+  <h2 class="sh" style="font-size:34pt;margin-bottom:24px">Product <span style="color:var(--blue2)">Roadmap</span></h2>
+  <div class="tline">
+    <div class="tnode">
+      <h4>Q1 2026</h4>
+      <p>Architecture &amp;<br>Foundation</p>
+    </div>
+    <div class="tnode">
+      <h4>Q2 2026</h4>
+      <p>Core Platform<br>MVP Build</p>
+    </div>
+    <div class="tnode" style="--blue:var(--purple)">
+      <h4>Q3 2026</h4>
+      <p>Advanced Features<br>+ SaaS Launch</p>
+    </div>
+    <div class="tnode">
+      <h4>Q4 2026</h4>
+      <p>Public Beta<br>First Customers</p>
+    </div>
+    <div class="tnode">
+      <h4>2027</h4>
+      <p>Enterprise &amp;<br>Global Expansion</p>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:30px;flex:1;align-content:end">
+    <div class="fcard">
+      <h4 style="color:var(--blue2)">Near-Term (6 months)</h4>
+      <ul style="font-size:8.5pt;color:var(--text2);list-style:none;padding:0">
+        <li style="padding:3px 0">✓ Risk classification engine</li>
+        <li style="padding:3px 0">✓ Regulation knowledge base (4+ frameworks)</li>
+        <li style="padding:3px 0">✓ Compliance dashboard + monitoring</li>
+        <li style="padding:3px 0">✓ Bias auditor + model cards</li>
+        <li style="padding:3px 0">✓ Incident reporting workflow</li>
+      </ul>
+    </div>
+    <div class="fcard">
+      <h4 style="color:var(--purple2)">Medium-Term (12 months)</h4>
+      <ul style="font-size:8.5pt;color:var(--text2);list-style:none;padding:0">
+        <li style="padding:3px 0">◎ AI agent activity monitor (AGI-ready)</li>
+        <li style="padding:3px 0">◎ Multi-language support (Hindi, Tamil)</li>
+        <li style="padding:3px 0">◎ CI/CD compliance pipeline integration</li>
+        <li style="padding:3px 0">◎ SOC 2 certification</li>
+        <li style="padding:3px 0">◎ 20+ regulation frameworks</li>
+      </ul>
+    </div>
+  </div>
+  <div class="bottom-bar"><span>Adhi Compliance — Pitch Deck</span><span>rootedai.co.in</span></div>
+</div>
+
+<!-- SLIDE 13: TEAM -->
+<div class="slide" style="background:linear-gradient(160deg,var(--bg) 0%,var(--navy) 40%,rgb(30,27,75) 100%);justify-content:center;align-items:center;text-align:center">
+  <div class="topbar" style="position:absolute;top:30px;left:50px;right:50px"><span class="logo">ROOTEDAI</span><span class="page">13 / 15</span></div>
+  <div style="width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--purple));margin:0 auto 24px;display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-weight:900;font-size:40pt;border:3px solid rgba(255,255,255,0.1)">GK</div>
+  <h2 class="sh" style="font-size:30pt;border:none;padding:0;margin:0">Ganesh Khovalan</h2>
+  <p style="color:var(--blue2);font-size:12pt;margin-top:6px;font-weight:500">Founder &amp; CEO</p>
+  <p style="color:var(--text2);font-size:10pt;margin-top:20px;max-width:500px;line-height:1.8">AI automation engineer with deep expertise in enterprise solutions, multimodal AI systems, and full-stack development. Building intelligent infrastructure for the modern enterprise.</p>
+  <div style="display:flex;gap:30px;margin-top:30px;justify-content:center">
+    <div style="text-align:center">
+      <div style="font-family:'Outfit',sans-serif;font-weight:800;font-size:10pt;color:var(--text)">RootedAI</div>
+      <div style="font-size:8pt;color:var(--muted);margin-top:3px">Engineering Intelligence &amp;<br>Enterprise Automation</div>
+    </div>
+    <div style="width:1px;background:var(--border)"></div>
+    <div style="text-align:center">
+      <div style="font-family:'Outfit',sans-serif;font-weight:800;font-size:10pt;color:var(--text)">Locations</div>
+      <div style="font-size:8pt;color:var(--muted);margin-top:3px">Hosur · Coimbatore ·<br>Bangalore · Chennai</div>
+    </div>
+    <div style="width:1px;background:var(--border)"></div>
+    <div style="text-align:center">
+      <div style="font-family:'Outfit',sans-serif;font-weight:800;font-size:10pt;color:var(--text)">Focus Areas</div>
+      <div style="font-size:8pt;color:var(--muted);margin-top:3px">AI Safety · Compliance ·<br>Multimodal AI · Enterprise</div>
+    </div>
+  </div>
+  <div class="bottom-bar" style="position:absolute;bottom:30px;left:50px;right:50px"><span>Adhi Compliance — Pitch Deck</span><span>rootedai.co.in</span></div>
+</div>
+
+<!-- SLIDE 14: THE ASK -->
+<div class="slide" style="background:linear-gradient(160deg,var(--bg) 0%,var(--navy) 40%,var(--navy3) 100%);justify-content:center;align-items:center;text-align:center">
+  <div class="topbar" style="position:absolute;top:30px;left:50px;right:50px"><span class="logo">ROOTEDAI</span><span class="page">14 / 15</span></div>
+  <h2 class="sh" style="font-size:42pt;border:none;padding:0;margin-bottom:30px">The <span style="background:linear-gradient(135deg,var(--blue),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent">Ask</span></h2>
+  <div style="display:flex;gap:24px;max-width:800px;margin:0 auto">
+    <div class="fcard" style="flex:1;text-align:center;border-top:3px solid var(--blue);padding:28px">
+      <div style="font-size:32pt;margin-bottom:12px">💰</div>
+      <h4 style="font-size:13pt;color:var(--text)">Seed Funding</h4>
+      <p style="margin-top:8px">Pre-seed / seed capital to accelerate development, hire key team members, and fund go-to-market activities</p>
+    </div>
+    <div class="fcard" style="flex:1;text-align:center;border-top:3px solid var(--purple);padding:28px">
+      <div style="font-size:32pt;margin-bottom:12px">🤝</div>
+      <h4 style="font-size:13pt;color:var(--text)">Strategic Partners</h4>
+      <p style="margin-top:8px">Law firms, IT consultancies, and compliance advisory firms who can co-sell and validate the product</p>
+    </div>
+    <div class="fcard" style="flex:1;text-align:center;border-top:3px solid var(--green);padding:28px">
+      <div style="font-size:32pt;margin-bottom:12px">🏢</div>
+      <h4 style="font-size:13pt;color:var(--text)">First 10 Customers</h4>
+      <p style="margin-top:8px">Design partners willing to pilot the platform and provide feedback in exchange for preferred pricing</p>
+    </div>
+  </div>
+  <div class="bottom-bar" style="position:absolute;bottom:30px;left:50px;right:50px"><span>Adhi Compliance — Pitch Deck</span><span>rootedai.co.in</span></div>
+</div>
+
+<!-- SLIDE 15: CONTACT -->
+<div class="slide" style="background:linear-gradient(160deg,var(--bg) 0%,var(--navy) 30%,rgb(30,27,75) 60%,var(--navy3) 100%);justify-content:center;align-items:center;text-align:center">
+  <div style="position:absolute;top:0;left:0;width:100%;height:100%;background:radial-gradient(ellipse at 50% 50%,rgba(59,130,246,0.06) 0%,transparent 60%)"></div>
+  <div style="position:relative;z-index:1">
+    <div style="font-family:'Outfit',sans-serif;font-size:10pt;font-weight:700;letter-spacing:6px;text-transform:uppercase;color:var(--text3);margin-bottom:40px">ROOTEDAI</div>
+    <h2 class="sh" style="font-size:44pt;border:none;padding:0;margin-bottom:12px">Let's Talk.</h2>
+    <p style="font-size:13pt;color:var(--text2);margin-bottom:50px">Ready to make AI compliance effortless?</p>
+    <div style="display:flex;flex-direction:column;gap:14px;align-items:center;font-size:12pt">
+      <div style="color:var(--text)">✉️ &nbsp; <strong>info@rootedai.co.in</strong></div>
+      <div style="color:var(--text)">🌐 &nbsp; <strong>rootedai.co.in</strong></div>
+      <div style="color:var(--text)">📞 &nbsp; <strong>+91 7904168521</strong></div>
+    </div>
+    <div style="margin-top:50px;display:flex;gap:16px;justify-content:center">
+      <span class="pill pill-white">Get Custom Solution →</span>
+      <span class="pill pill-outline">AI Safety Audit</span>
+    </div>
+    <p style="margin-top:50px;font-size:8pt;color:var(--muted)">© 2026 RootedAI · Engineering Intelligence &amp; Enterprise Automation<br>Hosur · Coimbatore · Bangalore · Chennai, India</p>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,16 @@
+You are a senior frontend engineer reviewing a Next.js 16 + TypeScript + Tailwind CSS application for 'Adhi Compliance' — an AI compliance platform dashboard.
+
+Review the ENTIRE frontend codebase and provide:
+
+1. CRITICAL ISSUES (broken imports, type errors, runtime bugs)
+2. UX/UI IMPROVEMENTS (accessibility, responsive design, loading states, error states)
+3. CODE QUALITY (component structure, hooks usage, state management, duplication)
+4. PERFORMANCE (bundle size, lazy loading, memoization, image optimization)
+5. SECURITY (XSS risks, data exposure, API key leaks, CSP)
+6. DESIGN SYSTEM (consistency, theme usage, component reusability)
+7. ACCESSIBILITY (ARIA labels, keyboard nav, color contrast, screen readers)
+8. API INTEGRATION (error handling, loading states, caching, optimistic updates)
+9. MISSING FEATURES (what pages/components are incomplete or need work)
+10. PRIORITY ACTION ITEMS (ranked list of what to fix first)
+
+Be extremely specific — cite file names, component names, and give concrete code suggestions. Format as a structured report.

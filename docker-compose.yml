@@ -1,0 +1,118 @@
+version: "3.9"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Adhi Compliance — full-stack docker-compose
+#
+# Services:
+#   backend       FastAPI (uvicorn, 4 workers)
+#   frontend      Next.js
+#   redis         Celery broker + result backend
+#   celery-worker Compliance & ingestion task worker
+#   celery-beat   Periodic scheduler (compliance scans)
+#
+# Usage:
+#   docker-compose up --build
+#   docker-compose exec backend alembic upgrade head   # first run
+# ──────────────────────────────────────────────────────────────────────────────
+
+x-backend-env: &backend-env
+  env_file:
+    - ./backend/.env
+  environment:
+    REDIS_URL: redis://redis:6379/0
+    DATABASE_URL: ${DATABASE_URL:-sqlite:///./data/metadata.db}
+
+services:
+
+  # ── Redis ─────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── FastAPI backend ────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/data:/app/data
+    <<: *backend-env
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ── Celery worker ──────────────────────────────────────────────────────────
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: >
+      celery -A app.workers.celery_app:celery_app worker
+      --loglevel=info
+      --queues=cpu_tasks,compliance_tasks,gpu_tasks
+      --concurrency=2
+    volumes:
+      - ./backend/data:/app/data
+    <<: *backend-env
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ── Celery beat (periodic compliance scans) ────────────────────────────────
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: >
+      celery -A app.workers.celery_app:celery_app beat
+      --loglevel=info
+      --scheduler celery.beat:PersistentScheduler
+    volumes:
+      - ./backend/data:/app/data
+      - celerybeat_data:/app/celerybeat
+    working_dir: /app/celerybeat
+    <<: *backend-env
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ── Next.js frontend ───────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./webapp
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://backend:8000
+    depends_on:
+      - backend
+
+volumes:
+  redis_data:
+  celerybeat_data:
+
+networks:
+  default:
+    name: adhi_network

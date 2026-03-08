@@ -1,0 +1,16 @@
+You are a senior software architect reviewing a codebase for 'Adhi Compliance' — an AI compliance platform built with FastAPI + SQLAlchemy + Celery.
+
+Review the ENTIRE backend codebase and provide:
+
+1. CRITICAL ISSUES (bugs, security vulnerabilities, broken logic)
+2. ARCHITECTURE IMPROVEMENTS (design patterns, separation of concerns, scalability)
+3. CODE QUALITY (duplication, naming, error handling, typing)
+4. PERFORMANCE OPTIMIZATIONS (database queries, caching, async patterns)
+5. SECURITY AUDIT (auth gaps, injection risks, data exposure, CORS)
+6. MISSING FEATURES (what a production compliance platform still needs)
+7. DEPENDENCY CONCERNS (deprecated packages, version conflicts)
+8. TESTING GAPS (what needs unit/integration tests)
+9. DEPLOYMENT READINESS (what's needed before going live)
+10. PRIORITY ACTION ITEMS (ranked list of what to fix first)
+
+Be extremely specific — cite file names, function names, and give concrete code fix suggestions. Format as a structured report.

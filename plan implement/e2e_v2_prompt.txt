@@ -1,0 +1,30 @@
+You are writing Playwright E2E tests for Adhi Compliance (Next.js 16 app).
+
+Read: app/*.tsx, app/**/*.tsx, components/*.tsx, package.json
+
+TASKS:
+
+1. Run: npm install -D @playwright/test @axe-core/playwright
+
+2. Create playwright.config.ts at the webapp root:
+   - baseURL: http://localhost:3000
+   - testDir: ./e2e
+   - projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }]
+
+3. Create e2e/ directory and these test files:
+
+e2e/auth.spec.ts - Test login page renders, invalid login shows error, protected routes redirect
+e2e/dashboard.spec.ts - Test dashboard loads stat cards, charts render
+e2e/systems.spec.ts - Test systems table loads, register modal works
+e2e/regulations.spec.ts - Test regulation library loads, search works
+e2e/chat.spec.ts - Test chat page renders with suggested questions
+e2e/incidents.spec.ts - Test incidents table, report modal
+e2e/responsive.spec.ts - Test sidebar collapses on mobile viewport
+e2e/accessibility.spec.ts - Test pages have no a11y violations using axe
+
+4. Add to package.json scripts:
+   "test:e2e": "npx playwright test"
+
+Commit: feat: Playwright E2E test suite
+
+When done run: openclaw system event --text "Done: E2E tests complete" --mode now

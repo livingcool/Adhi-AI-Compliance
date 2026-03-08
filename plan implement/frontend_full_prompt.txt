@@ -1,0 +1,5191 @@
+You are a senior frontend engineer reviewing a Next.js 16 + TypeScript + Tailwind CSS application for 'Adhi Compliance' — an AI compliance platform dashboard.
+
+Review the ENTIRE frontend codebase and provide:
+
+1. CRITICAL ISSUES (broken imports, type errors, runtime bugs)
+2. UX/UI IMPROVEMENTS (accessibility, responsive design, loading states, error states)
+3. CODE QUALITY (component structure, hooks usage, state management, duplication)
+4. PERFORMANCE (bundle size, lazy loading, memoization, image optimization)
+5. SECURITY (XSS risks, data exposure, API key leaks, CSP)
+6. DESIGN SYSTEM (consistency, theme usage, component reusability)
+7. ACCESSIBILITY (ARIA labels, keyboard nav, color contrast, screen readers)
+8. API INTEGRATION (error handling, loading states, caching, optimistic updates)
+9. MISSING FEATURES (what pages/components are incomplete or need work)
+10. PRIORITY ACTION ITEMS (ranked list of what to fix first)
+
+Be extremely specific — cite file names, component names, and give concrete code suggestions. Format as a structured report.
+
+CODEBASE:
+
+=== webapp\app\api\chat\manager\route.ts ===
+import { NextRequest, NextResponse } from "next/server";
+import { supabase, logAIUsage } from "@/lib/supabase";
+
+// Force dynamic ensures this route isn't statically cached
+export const dynamic = 'force-dynamic';
+
+// Configuration
+const BACKEND_URL = process.env.NEXT_PUBLIC_APP_BACKEND_URL;
+
+export async function POST(req: NextRequest) {
+    try {
+        const body = await req.json();
+        const { message, orgId = "default_org", filters } = body;
+
+        // 1. Fetch Context (Identity)
+        let identity = { name: "The Company", usp: "General Business", tone: "Professional" };
+
+        try {
+            const { data: orgData } = await supabase.from('organizations').select('*').eq('id', orgId).single();
+            if (orgData) {
+                identity = {
+                    name: orgData.name || "The Company",
+                    usp: orgData.identity_data?.usp || "General Business",
+                    tone: orgData.identity_data?.tone || "Professional"
+                };
+            }
+        } catch (e) {
+            console.warn("Supabase Error during context fetch:", e);
+        }
+
+        // 2. Call Hugging Face Backend (Deep RAG)
+        let aiResponseText = "";
+        let sourcesUsed: any[] = [];
+        let vizData = null;
+
+        if (!BACKEND_URL) {
+            console.warn("NEXT_PUBLIC_APP_BACKEND_URL is not set. Using fallback mock response.");
+            aiResponseText = "System Configuration Error: Backend URL not set. Please configure the integration.";
+        } else {
+            try {
+                // Determine API Endpoint (proxy to HF Space)
+                // If the URL ends with / (e.g. https://space.hf.space/), trim it
+                const baseUrl = BACKEND_URL.replace(/\/$/, "");
+                const apiUrl = `${baseUrl}/api/v1/query`;
+
+                console.log(`[Proxy] Forwarding query to: ${apiUrl}`);
+
+                const backendResponse = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: message,
+                        organization_id: orgId,
+                        filters: filters || {}
+                    })
+                });
+
+                if (!backendResponse.ok) {
+                    throw new Error(`Backend API Error: ${backendResponse.statusText}`);
+                }
+
+                const data = await backendResponse.json();
+
+                // Parse Response from Backend
+                aiResponseText = data.answer;
+                sourcesUsed = data.sources || [];
+                vizData = data.viz_data;
+
+            } catch (apiError) {
+                console.error("HF Backend Call Failed:", apiError);
+                aiResponseText = `I am currently unable to reach the neural core. Please check the backend connection. (Internal Error: ${apiError instanceof Error ? apiError.message : String(apiError)})`;
+                // This file is unused if we call Python directly, BUT wait.
+                // The frontend calls `api` which defaults to `/api`.
+                // We need to check if there is a Next.js route for `/orgs`?
+                // `webapp/lib/api.ts` -> `const API_BASE_URL = ... || "/api"`.
+                // Wait, `queryAdhi` calls `/query`. That maps to `app/api/query/route.ts`? NO.
+                // `queryAdhi` in `lib/api.ts` calls `/query`.
+                // But `ManagerConsole` calls `/api/chat/manager`.
+                // There is an inconsistency in the codebase.
+                // `lib/api.ts` assumes a direct backend connection OR a Next.js proxy.
+                // If valid Next.js routes don't exist, we must add them.
+            }
+        }
+
+        // 3. Log Tokens (Estimated)
+        await logAIUsage(
+            orgId,
+            "ManagerChat",
+            "mixtral-8x7b", // or whatever model is behind the API
+            500 + aiResponseText.length / 4,
+            150,
+            0.00, // Open Source = Free (or low cost)
+            {
+                message_fragment: message.substring(0, 20),
+                provider: "huggingface",
+                backend_url: BACKEND_URL
+            }
+        );
+
+        // 4. Return
+        return NextResponse.json({
+            success: true,
+            role: "ai",
+            text: aiResponseText,
+            timestamp: new Date().toISOString(),
+            sources: sourcesUsed,
+            viz: vizData,
+            context_used: { identity_usp: identity.usp }
+        });
+
+    } catch (e) {
+        console.error("Chat API Error:", e);
+        return NextResponse.json({
+            success: false,
+            role: "ai",
+            text: "I encountered a synchronization error. Please try again.",
+            timestamp: new Date().toISOString()
+        }, { status: 500 });
+    }
+}
+
+
+=== webapp\app\api\identity\analyze\route.ts ===
+import { NextRequest, NextResponse } from "next/server";
+import { supabase, logAIUsage } from "@/lib/supabase";
+
+import * as cheerio from 'cheerio'; // We will need to install this, or use basic regex if package adding is restricted. 
+// For now, I will use basic fetch + regex to avoid heavy dependency unless requested.
+// Actually, basic fetch is safer for a "workable" demo without heavy node_modules changes.
+
+async function scrapeMetadata(url: string) {
+    try {
+        const res = await fetch(url);
+        const html = await res.text();
+
+        // Simple Regex extraction for demo purposes (Cheerio is better but requires install)
+        const titleMatch = html.match(/<title>(.*?)<\/title>/i);
+        const title = titleMatch ? titleMatch[1] : "Unknown Title";
+
+        const descMatch = html.match(/<meta name="description" content="(.*?)"/i);
+        const description = descMatch ? descMatch[1] : "No description found";
+
+        return { title, description };
+    } catch (e) {
+        return { title: "Analysis Failed", description: "Could not reach website." };
+    }
+}
+
+export async function POST(req: NextRequest) {
+
+
+    try {
+        const { websiteUrl, orgId } = await req.json();
+
+        // 1. REAL Web Scraper (No more simulation)
+        // Ensure URL has protocol
+        const targetUrl = websiteUrl.startsWith('http') ? websiteUrl : `https://${websiteUrl}`;
+        const scrapedData = await scrapeMetadata(targetUrl);
+
+        // 2. Synthesize "Identity" from Real Data
+        const mockIdentity = {
+            sector: "Detected Sector (AI Analysis)",
+            usp: scrapedData.description.substring(0, 100) + "...",
+            generated_tags: [scrapedData.title.split(' ')[0], "Business", "Verified"],
+            tone: "Professional, Analyzed from Live Web"
+        };
+
+        console.log("Scraped Real Data:", scrapedData);
+
+        // 3. Update DB (Try Supabase -> Fallback to Local)
+        if (orgId) {
+            try {
+                // Attempt Supabase UPSERT (Create if not exists)
+                // We use upsert to ensure the Org exists so the generic ID check passes
+                const { error: updateError } = await supabase.from('organizations').upsert({
+                    id: orgId, // Force the ID so subsequent calls match
+                    identity_data: mockIdentity,
+                    website_url: websiteUrl,
+                    name: "Demo Organization" // Default name
+                }, { onConflict: 'id' });
+
+                if (updateError) {
+                    console.error("Supabase Upsert Error:", updateError);
+                    throw new Error("Supabase Update Failed: " + updateError.message);
+                }
+
+                await logAIUsage(
+                    orgId,
+                    "IdentityScraper",
+                    "gpt-3.5-turbo-0125",
+                    1500, // Real token count would be calculated here
+                    200,
+                    0.00105,
+                    { url: websiteUrl, title: scrapedData.title }
+                );
+
+            } catch (dbError: any) {
+                console.error("Supabase Error:", dbError);
+                throw dbError; // Propagate error instead of falling back
+            }
+        }
+
+        return NextResponse.json({
+            success: true,
+            data: mockIdentity,
+            storage_mode: "supabase_cloud"
+        });
+
+    } catch (e) {
+        console.error("API Route Error:", e);
+        return NextResponse.json({ success: false, error: "Analysis failed" }, { status: 500 });
+    }
+}
+
+
+=== webapp\app\api\knowledge\upload\route.ts ===
+import { NextRequest, NextResponse } from "next/server";
+import { supabase, logAIUsage } from "@/lib/supabase";
+
+
+// 1. GET: List all documents for an Org
+export async function GET(req: NextRequest) {
+    const { searchParams } = new URL(req.url);
+    const orgId = searchParams.get('orgId');
+
+    if (!orgId) return NextResponse.json({ success: false, error: "Missing orgId" }, { status: 400 });
+
+    try {
+        // Fetch from Supabase
+        const { data, error } = await supabase
+            .from('knowledge_documents')
+            .select('*')
+            .eq('org_id', orgId)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        return NextResponse.json({ success: true, data: data || [] });
+
+    } catch (e: any) {
+        console.error("Supabase fetch failed:", e);
+        return NextResponse.json({ success: false, error: "Fetch failed" }, { status: 500 });
+    }
+}
+
+// 2. POST: Upload a new document
+export async function POST(req: NextRequest) {
+    try {
+        const formData = await req.formData();
+        const file = formData.get('file') as File;
+        const orgId = formData.get('orgId') as string;
+
+        if (!file || !orgId) {
+            return NextResponse.json({ success: false, error: "Missing file or orgId" }, { status: 400 });
+        }
+
+        const fileName = file.name;
+        // In a real app, we would upload the binary to S3/Supabase Storage.
+        // For this "Workable POC", we will store the Metadata + Mock Indexing status.
+
+        const docRecord = {
+            org_id: orgId,
+            filename: fileName,
+            file_url: "stored_internally", // Placeholder
+            status: "Indexed", // Auto-mark as indexed for demo
+            size: `${(file.size / 1024).toFixed(2)} KB`
+        };
+
+        let finalId = crypto.randomUUID(); // Fallback ID
+
+        // Attempt Supabase Write
+
+        // Ensure Org Exists First (Prevent FK Error)
+        const { error: orgError } = await supabase.from('organizations').upsert({
+            id: orgId,
+            name: "Demo Organization"
+        }, { onConflict: 'id' });
+
+        if (orgError) console.warn("Could not upsert org, doc insert might fail:", orgError);
+
+        const { data, error } = await supabase.from('knowledge_documents').insert(docRecord).select().single();
+        if (error) {
+            console.error("Supabase insert failed", error);
+            throw error;
+        }
+        if (data) finalId = data.id;
+
+        // Log AI Usage
+        await logAIUsage(
+            orgId,
+            "DocumentEmbedding",
+            "text-embedding-3-small",
+            Math.ceil(file.size / 4),
+            0,
+            0.0001,
+            { filename: fileName }
+        );
+
+        return NextResponse.json({ success: true, data: { ...docRecord, id: finalId } });
+
+    } catch (e) {
+        return NextResponse.json({ success: false, error: "Upload failed" }, { status: 500 });
+    }
+}
+
+
+=== webapp\app\api\organizations\route.ts ===
+import { NextRequest, NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase";
+
+
+export async function GET(req: NextRequest) {
+    try {
+        // Fetch from Supabase
+        const { data, error } = await supabase.from('organizations').select('id, name');
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+            // Map to frontend format
+            return NextResponse.json(data.map(org => ({
+                id: org.id,
+                name: org.name || "Unnamed Org",
+                slug: org.id
+            })));
+        }
+
+        // Return empty list if no organizations found
+        return NextResponse.json([]);
+
+    } catch (e: any) {
+        console.error("Supabase fetch failed:", e);
+        return NextResponse.json({ error: e.message }, { status: 500 });
+    }
+}
+
+
+=== webapp\app\bias\page.tsx ===
+"use client";
+
+import { useState, useRef } from "react";
+import {
+  ScanSearch,
+  Upload,
+  ChevronDown,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  Play,
+  Clock,
+  BarChart3,
+  FileUp,
+} from "lucide-react";
+
+// ── Types ─────────────────────────────────────────────────────────────────
+type AuditStatus = "PASS" | "WARN" | "FAIL";
+
+interface BiasMetric {
+  name: string;
+  description: string;
+  value: number;
+  threshold: { warn: number; fail: number };
+  higherIsBetter: boolean;
+  status: AuditStatus;
+}
+
+interface HistoricalAudit {
+  id: string;
+  system: string;
+  runDate: string;
+  overallStatus: AuditStatus;
+  score: number;
+  dataset: string;
+}
+
+// ── Constants ─────────────────────────────────────────────────────────────
+const AI_SYSTEMS = [
+  "Loan Approval Model",
+  "HR Screening Tool",
+  "Customer Analytics AI",
+  "Content Moderation AI",
+  "Fraud Detection System",
+  "Pricing Optimization AI",
+  "Recommendation Engine",
+  "Churn Predictor",
+];
+
+const MOCK_METRICS: BiasMetric[] = [
+  {
+    name: "Demographic Parity",
+    description: "Difference in positive prediction rates between demographic groups",
+    value: 0.082,
+    threshold: { warn: 0.1, fail: 0.2 },
+    higherIsBetter: false,
+    status: "PASS",
+  },
+  {
+    name: "Disparate Impact Ratio",
+    description:
+      "Ratio of positive outcome rates between protected and reference groups (≥0.8 required)",
+    value: 0.74,
+    threshold: { warn: 0.8, fail: 0.6 },
+    higherIsBetter: true,
+    status: "WARN",
+  },
+  {
+    name: "Equal Opportunity Difference",
+    description: "Difference in true positive rates between demographic groups",
+    value: 0.143,
+    threshold: { warn: 0.1, fail: 0.2 },
+    higherIsBetter: false,
+    status: "WARN",
+  },
+  {
+    name: "Average Odds Difference",
+    description:
+      "Average of true positive rate and false positive rate differences across groups",
+    value: 0.065,
+    threshold: { warn: 0.1, fail: 0.2 },
+    higherIsBetter: false,
+    status: "PASS",
+  },
+  {
+    name: "Predictive Parity",
+    description:
+      "Difference in positive predictive values between demographic groups",
+    value: 0.031,
+    threshold: { warn: 0.05, fail: 0.1 },
+    higherIsBetter: false,
+    status: "PASS",
+  },
+  {
+    name: "Theil Index",
+    description: "Generalised entropy index measuring individual fairness across all groups",
+    value: 0.19,
+    threshold: { warn: 0.15, fail: 0.25 },
+    higherIsBetter: false,
+    status: "WARN",
+  },
+];
+
+const HISTORICAL: HistoricalAudit[] = [
+  {
+    id: "AUD-012",
+    system: "Loan Approval Model",
+    runDate: "Feb 20, 2026",
+    overallStatus: "WARN",
+    score: 68,
+    dataset: "Q1-2026-loan-apps.csv",
+  },
+  {
+    id: "AUD-011",
+    system: "HR Screening Tool",
+    runDate: "Feb 15, 2026",
+    overallStatus: "FAIL",
+    score: 41,
+    dataset: "candidates-jan-2026.csv",
+  },
+  {
+    id: "AUD-010",
+    system: "Customer Analytics AI",
+    runDate: "Feb 10, 2026",
+    overallStatus: "PASS",
+    score: 92,
+    dataset: "analytics-dataset-v3.parquet",
+  },
+  {
+    id: "AUD-009",
+    system: "Pricing Optimization AI",
+    runDate: "Feb 5, 2026",
+    overallStatus: "FAIL",
+    score: 38,
+    dataset: "pricing-feb-2026.csv",
+  },
+  {
+    id: "AUD-008",
+    system: "Fraud Detection System",
+    runDate: "Jan 28, 2026",
+    overallStatus: "PASS",
+    score: 85,
+    dataset: "fraud-dataset-q4-2025.csv",
+  },
+];
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function statusBadge(s: AuditStatus, size: "sm" | "md" = "sm") {
+  const base =
+    size === "sm"
+      ? "text-[10px] px-2 py-0.5 rounded-full font-semibold flex items-center gap-1 w-fit"
+      : "text-xs px-3 py-1 rounded-full font-bold flex items-center gap-1.5 w-fit";
+  if (s === "PASS")
+    return (
+      <span className={`${base} bg-green-500/15 text-green-400 border border-green-500/25`}>
+        <CheckCircle2 className={size === "sm" ? "w-3 h-3" : "w-4 h-4"} />
+        PASS
+      </span>
+    );
+  if (s === "WARN")
+    return (
+      <span className={`${base} bg-yellow-500/15 text-yellow-400 border border-yellow-500/25`}>
+        <AlertTriangle className={size === "sm" ? "w-3 h-3" : "w-4 h-4"} />
+        WARN
+      </span>
+    );
+  return (
+    <span className={`${base} bg-red-500/15 text-red-400 border border-red-500/25`}>
+      <XCircle className={size === "sm" ? "w-3 h-3" : "w-4 h-4"} />
+      FAIL
+    </span>
+  );
+}
+
+function MetricBar({ metric }: { metric: BiasMetric }) {
+  // Normalise value for display (0-1 range)
+  const maxScale = metric.threshold.fail * 1.5;
+  const pct = metric.higherIsBetter
+    ? (metric.value / 1) * 100
+    : Math.min((metric.value / maxScale) * 100, 100);
+
+  const barColor =
+    metric.status === "PASS"
+      ? "#22c55e"
+      : metric.status === "WARN"
+      ? "#eab308"
+      : "#ef4444";
+
+  return (
+    <div className="glass-card p-4 space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-white">{metric.name}</p>
+          <p className="text-[11px] text-[rgb(163,163,163)] mt-0.5 leading-relaxed">
+            {metric.description}
+          </p>
+        </div>
+        {statusBadge(metric.status)}
+      </div>
+
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-2 bg-white/[0.06] rounded-full overflow-hidden">
+          <div
+            className="h-2 rounded-full transition-all duration-700"
+            style={{ width: `${pct}%`, background: barColor }}
+          />
+        </div>
+        <span
+          className="text-sm font-bold w-16 text-right"
+          style={{ color: barColor }}
+        >
+          {metric.value.toFixed(3)}
+        </span>
+      </div>
+
+      <div className="flex items-center gap-4 text-[10px] text-[rgb(115,115,115)]">
+        <span>
+          Warn threshold: {metric.higherIsBetter ? "≥" : "≤"}{" "}
+          {metric.threshold.warn}
+        </span>
+        <span>
+          Fail threshold: {metric.higherIsBetter ? "≥" : "≤"}{" "}
+          {metric.threshold.fail}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────
+export default function BiasPage() {
+  const [selectedSystem, setSelectedSystem] = useState("");
+  const [dragOver, setDragOver] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<string | null>(null);
+  const [running, setRunning] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const overallStatus: AuditStatus = showResults
+    ? MOCK_METRICS.some((m) => m.status === "FAIL")
+      ? "FAIL"
+      : MOCK_METRICS.some((m) => m.status === "WARN")
+      ? "WARN"
+      : "PASS"
+    : "PASS";
+
+  const handleFile = (file: File) => {
+    setUploadedFile(file.name);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  };
+
+  const runAudit = () => {
+    if (!selectedSystem || !uploadedFile) return;
+    setRunning(true);
+    setShowResults(false);
+    setTimeout(() => {
+      setRunning(false);
+      setShowResults(true);
+    }, 2800);
+  };
+
+  const passCount = MOCK_METRICS.filter((m) => m.status === "PASS").length;
+  const warnCount = MOCK_METRICS.filter((m) => m.status === "WARN").length;
+  const failCount = MOCK_METRICS.filter((m) => m.status === "FAIL").length;
+
+  return (
+    <div className="p-6 max-w-7xl mx-auto space-y-8">
+      {/* Header */}
+      <div>
+        <h1 className="font-heading font-bold text-2xl text-white">
+          Bias Auditor
+        </h1>
+        <p className="text-sm text-[rgb(163,163,163)] mt-0.5">
+          Analyse AI systems for demographic bias and fairness metrics
+        </p>
+      </div>
+
+      {/* Setup panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Upload */}
+        <div className="glass-card p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <FileUp className="w-4 h-4 text-blue-400" />
+            <h2 className="font-heading font-semibold text-white text-sm">
+              Upload Dataset
+            </h2>
+          </div>
+
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
+              dragOver
+                ? "border-blue-500/60 bg-blue-500/10"
+                : uploadedFile
+                ? "border-green-500/40 bg-green-500/05"
+                : "border-white/[0.10] hover:border-white/[0.20] hover:bg-white/[0.03]"
+            }`}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.parquet,.json"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFile(file);
+              }}
+            />
+            {uploadedFile ? (
+              <div className="space-y-1">
+                <CheckCircle2 className="w-8 h-8 text-green-400 mx-auto" />
+                <p className="text-sm font-medium text-white">{uploadedFile}</p>
+                <p className="text-xs text-[rgb(163,163,163)]">
+                  Click to replace
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Upload className="w-8 h-8 text-[rgb(115,115,115)] mx-auto" />
+                <p className="text-sm font-medium text-white">
+                  Drop dataset here
+                </p>
+                <p className="text-xs text-[rgb(163,163,163)]">
+                  Supports CSV, Parquet, JSON · max 500 MB
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Config */}
+        <div className="glass-card p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <ScanSearch className="w-4 h-4 text-purple-400" />
+            <h2 className="font-heading font-semibold text-white text-sm">
+              Audit Configuration
+            </h2>
+          </div>
+
+          {/* System select */}
+          <div>
+            <label className="text-xs font-medium text-[rgb(163,163,163)] mb-1.5 block">
+              Select AI System
+            </label>
+            <div className="relative">
+              <select
+                value={selectedSystem}
+                onChange={(e) => setSelectedSystem(e.target.value)}
+                className="w-full appearance-none bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors pr-8"
+              >
+                <option value="" disabled className="bg-[rgb(10,10,10)]">
+                  Choose a system to audit
+                </option>
+                {AI_SYSTEMS.map((s) => (
+                  <option key={s} value={s} className="bg-[rgb(10,10,10)]">
+                    {s}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[rgb(115,115,115)] pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Metrics checkboxes */}
+          <div>
+            <label className="text-xs font-medium text-[rgb(163,163,163)] mb-2 block">
+              Metrics to Compute
+            </label>
+            <div className="grid grid-cols-2 gap-1.5">
+              {[
+                "Demographic Parity",
+                "Disparate Impact",
+                "Equal Opportunity",
+                "Average Odds",
+                "Predictive Parity",
+                "Theil Index",
+              ].map((m) => (
+                <label
+                  key={m}
+                  className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/[0.04] cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    defaultChecked
+                    className="accent-blue-500 w-3.5 h-3.5"
+                  />
+                  <span className="text-xs text-[rgb(163,163,163)]">{m}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <button
+            onClick={runAudit}
+            disabled={!selectedSystem || !uploadedFile || running}
+            className="w-full btn-pill btn-primary text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {running ? (
+              <>
+                <ScanSearch className="w-4 h-4 animate-pulse" />
+                Running Audit…
+              </>
+            ) : (
+              <>
+                <Play className="w-4 h-4" />
+                Run Bias Audit
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Results */}
+      {showResults && (
+        <div className="space-y-4">
+          {/* Overall result */}
+          <div className="glass-card p-5 flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-yellow-500/15 border border-yellow-500/25 flex items-center justify-center">
+                <BarChart3 className="w-6 h-6 text-yellow-400" />
+              </div>
+              <div>
+                <p className="text-xs text-[rgb(163,163,163)] mb-1">
+                  Audit result for{" "}
+                  <span className="text-white font-medium">{selectedSystem}</span>
+                </p>
+                <div className="flex items-center gap-3">
+                  {statusBadge(overallStatus, "md")}
+                  <span className="text-[rgb(115,115,115)] text-xs">
+                    {passCount} pass · {warnCount} warn · {failCount} fail
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="font-heading font-black text-4xl text-yellow-400">
+                68
+              </p>
+              <p className="text-xs text-[rgb(163,163,163)]">Fairness Score</p>
+            </div>
+          </div>
+
+          {/* Metric cards */}
+          <h2 className="font-heading font-semibold text-white text-sm">
+            Metric Breakdown
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {MOCK_METRICS.map((m) => (
+              <MetricBar key={m.name} metric={m} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Historical audits */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <Clock className="w-4 h-4 text-[rgb(163,163,163)]" />
+          <h2 className="font-heading font-semibold text-white text-sm">
+            Historical Audits
+          </h2>
+        </div>
+
+        <div className="glass-card overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-white/[0.06]">
+                {["Audit ID", "System", "Dataset", "Run Date", "Score", "Result"].map(
+                  (h) => (
+                    <th
+                      key={h}
+                      className="px-4 py-3 text-left text-[10px] font-semibold text-[rgb(115,115,115)] uppercase tracking-wider"
+                    >
+                      {h}
+                    </th>
+                  )
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {HISTORICAL.map((audit, idx) => (
+                <tr
+                  key={audit.id}
+                  className={`border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors ${
+                    idx === HISTORICAL.length - 1 ? "border-b-0" : ""
+                  }`}
+                >
+                  <td className="px-4 py-3.5">
+                    <span className="text-xs font-mono text-blue-400">
+                      {audit.id}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <span className="text-sm font-medium text-white">
+                      {audit.system}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <span className="text-xs text-[rgb(163,163,163)] font-mono">
+                      {audit.dataset}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <span className="text-xs text-[rgb(163,163,163)]">
+                      {audit.runDate}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <span
+                      className="text-sm font-bold"
+                      style={{
+                        color:
+                          audit.score >= 80
+                            ? "#22c55e"
+                            : audit.score >= 60
+                            ? "#eab308"
+                            : "#ef4444",
+                      }}
+                    >
+                      {audit.score}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    {statusBadge(audit.overallStatus)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+=== webapp\app\chat\page.tsx ===
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import {
+  Send,
+  Bot,
+  User,
+  Sparkles,
+  BookOpen,
+  ChevronRight,
+} from "lucide-react";
+import { api } from "@/lib/api";
+
+// ── Types ─────────────────────────────────────────────────────────────────
+interface Citation {
+  regulation: string;
+  article?: string;
+  excerpt: string;
+}
+
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
+  citations?: Citation[];
+  loading?: boolean;
+}
+
+// ── Suggested questions ───────────────────────────────────────────────────
+const SUGGESTED = [
+  "Do I need to label AI content?",
+  "What does EU AI Act require for high-risk?",
+  "Is voice data biometric under GDPR?",
+  "DPDP Act consent requirements",
+];
+
+// ── Mock citations for demo ───────────────────────────────────────────────
+const MOCK_CITATIONS: Record<string, Citation[]> = {
+  default: [
+    {
+      regulation: "EU AI Act",
+      article: "Article 13",
+      excerpt:
+        "High-risk AI systems shall be designed and developed in such a way as to ensure that their operation is sufficiently transparent.",
+    },
+    {
+      regulation: "GDPR",
+      article: "Article 22",
+      excerpt:
+        "The data subject shall have the right not to be subject to a decision based solely on automated processing.",
+    },
+  ],
+  label: [
+    {
+      regulation: "EU AI Act",
+      article: "Article 50",
+      excerpt:
+        "Providers of AI systems that generate synthetic audio, video, text or images shall ensure the outputs are marked in a machine-readable format.",
+    },
+  ],
+  biometric: [
+    {
+      regulation: "GDPR",
+      article: "Article 9",
+      excerpt:
+        "Processing of biometric data for the purpose of uniquely identifying a natural person constitutes special category data.",
+    },
+    {
+      regulation: "EU AI Act",
+      article: "Article 3(34)",
+      excerpt:
+        "Biometric data means personal data resulting from specific technical processing relating to physical, physiological or behavioural characteristics.",
+    },
+  ],
+  dpdp: [
+    {
+      regulation: "India DPDP Act 2023",
+      article: "Section 6",
+      excerpt:
+        "A Data Fiduciary shall give the Data Principal a notice requesting consent for processing of her personal data.",
+    },
+  ],
+};
+
+function getCitations(query: string): Citation[] {
+  const q = query.toLowerCase();
+  if (q.includes("label") || q.includes("synthetic")) return MOCK_CITATIONS.label;
+  if (q.includes("biometric") || q.includes("voice")) return MOCK_CITATIONS.biometric;
+  if (q.includes("dpdp") || q.includes("consent")) return MOCK_CITATIONS.dpdp;
+  return MOCK_CITATIONS.default;
+}
+
+// ── Mock AI responses ─────────────────────────────────────────────────────
+function getMockResponse(query: string): string {
+  const q = query.toLowerCase();
+  if (q.includes("label") || q.includes("synthetic")) {
+    return "Yes, under **EU AI Act Article 50**, providers of AI systems generating synthetic content (text, audio, images, video) must ensure outputs are machine-readable marked as AI-generated. For consumer-facing products, visible disclosure is also required when the content could reasonably be mistaken for authentic. The obligation applies to both the AI provider and, in some cases, the deployer.";
+  }
+  if (q.includes("high-risk") || q.includes("eu ai act")) {
+    return "Under the **EU AI Act**, high-risk AI systems (Annex III) must meet these key requirements:\n\n• **Risk management system** — documented throughout the lifecycle\n• **Data governance** — training data must meet quality criteria\n• **Technical documentation** — comprehensive system documentation\n• **Transparency** — users must be informed they're interacting with AI\n• **Human oversight** — mechanisms to allow human intervention\n• **Accuracy & robustness** — measurable performance standards\n• **Conformity assessment** — either self-assessment or third-party audit before market placement";
+  }
+  if (q.includes("biometric") || q.includes("voice")) {
+    return "Yes, voice data can constitute biometric data under **GDPR Article 9** when processed to uniquely identify a person. Voiceprints created through technical processing are explicitly biometric data — a special category requiring explicit consent or another legal basis under Article 9(2). The EU AI Act additionally prohibits or restricts certain real-time biometric AI applications in public spaces. Your system should conduct a Data Protection Impact Assessment (DPIA) if processing voice for identification purposes.";
+  }
+  if (q.includes("dpdp") || q.includes("consent")) {
+    return "The **India Digital Personal Data Protection Act 2023** establishes these consent requirements:\n\n• Consent must be **free, specific, informed, unconditional and unambiguous**\n• A clear **notice** must be provided before or at the time of collecting data\n• Consent requests must be in **plain language** and available in scheduled languages\n• Users have the right to **withdraw consent** at any time\n• For children (<18), **verifiable parental consent** is required\n• Data Fiduciaries must maintain records of consent\n\nNote: Implementing rules and commencement date are still pending as of early 2026.";
+  }
+  return "Based on the compliance knowledge base, I can help you navigate this regulatory question. The applicable frameworks depend on your jurisdiction, the type of AI system, and the data processed. Please share more details about your specific use case, and I'll reference the relevant regulatory provisions from EU AI Act, GDPR, DPDP Act, and other applicable standards.";
+}
+
+// ── Message bubble ────────────────────────────────────────────────────────
+function MessageBubble({ msg }: { msg: Message }) {
+  const isUser = msg.role === "user";
+  return (
+    <div className={`flex gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
+      {/* Avatar */}
+      <div
+        className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center ${
+          isUser
+            ? "bg-blue-500/20 border border-blue-500/30"
+            : "bg-purple-500/20 border border-purple-500/30"
+        }`}
+      >
+        {isUser ? (
+          <User className="w-4 h-4 text-blue-400" />
+        ) : (
+          <Bot className="w-4 h-4 text-purple-400" />
+        )}
+      </div>
+
+      {/* Bubble */}
+      <div className={`max-w-[72%] space-y-2 ${isUser ? "items-end" : "items-start"} flex flex-col`}>
+        <div
+          className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+            isUser
+              ? "bg-blue-500/20 border border-blue-500/25 text-white rounded-tr-sm"
+              : "glass border border-white/[0.08] text-white rounded-tl-sm"
+          } ${msg.loading ? "animate-pulse" : ""}`}
+        >
+          {msg.loading ? (
+            <div className="flex items-center gap-2 text-[rgb(163,163,163)]">
+              <Sparkles className="w-3.5 h-3.5 animate-spin text-purple-400" />
+              <span className="text-xs">Analysing compliance knowledge base…</span>
+            </div>
+          ) : (
+            <div className="whitespace-pre-line">
+              {msg.content.split(/(\*\*[^*]+\*\*)/).map((part, i) =>
+                part.startsWith("**") && part.endsWith("**") ? (
+                  <strong key={i} className="font-semibold text-white">
+                    {part.slice(2, -2)}
+                  </strong>
+                ) : (
+                  <span key={i}>{part}</span>
+                )
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Citations */}
+        {!msg.loading && msg.citations && msg.citations.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-[10px] text-[rgb(115,115,115)] flex items-center gap-1">
+              <BookOpen className="w-3 h-3" />
+              Sources
+            </p>
+            {msg.citations.map((c, i) => (
+              <div
+                key={i}
+                className="glass-card px-3 py-2 rounded-xl border-l-2 border-l-purple-500/40 text-xs"
+              >
+                <p className="font-semibold text-purple-300">
+                  {c.regulation}
+                  {c.article && (
+                    <span className="text-[rgb(163,163,163)] font-normal ml-1">
+                      — {c.article}
+                    </span>
+                  )}
+                </p>
+                <p className="text-[rgb(163,163,163)] mt-0.5 leading-relaxed line-clamp-2">
+                  {c.excerpt}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Timestamp */}
+        <p className="text-[10px] text-[rgb(115,115,115)]">
+          {msg.timestamp.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────
+export default function ChatPage() {
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "welcome",
+      role: "assistant",
+      content:
+        "Hello! I'm your Compliance Advisor, powered by the Adhi regulatory knowledge base. I can answer questions about EU AI Act, GDPR, DPDP Act, NIST AI RMF, and other applicable regulations. What would you like to know?",
+      timestamp: new Date(),
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const sendMessage = async (text: string) => {
+    if (!text.trim() || sending) return;
+    const userMsg: Message = {
+      id: `u-${Date.now()}`,
+      role: "user",
+      content: text.trim(),
+      timestamp: new Date(),
+    };
+    const loadingMsg: Message = {
+      id: `l-${Date.now()}`,
+      role: "assistant",
+      content: "",
+      timestamp: new Date(),
+      loading: true,
+    };
+    setMessages((prev) => [...prev, userMsg, loadingMsg]);
+    setInput("");
+    setSending(true);
+
+    try {
+      // Try real API first
+      const response = await api.post("/v1/query", {
+        query: text,
+        context: "compliance",
+      });
+      const data = response.data;
+      const aiMsg: Message = {
+        id: `a-${Date.now()}`,
+        role: "assistant",
+        content: data.answer || getMockResponse(text),
+        timestamp: new Date(),
+        citations: getCitations(text),
+      };
+      setMessages((prev) =>
+        prev.map((m) => (m.id === loadingMsg.id ? aiMsg : m))
+      );
+    } catch {
+      // Fallback to mock
+      await new Promise((r) => setTimeout(r, 1200));
+      const aiMsg: Message = {
+        id: `a-${Date.now()}`,
+        role: "assistant",
+        content: getMockResponse(text),
+        timestamp: new Date(),
+        citations: getCitations(text),
+      };
+      setMessages((prev) =>
+        prev.map((m) => (m.id === loadingMsg.id ? aiMsg : m))
+      );
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage(input);
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full max-h-screen">
+      {/* Header */}
+      <div className="px-6 py-5 border-b border-white/[0.06] flex-shrink-0">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
+              <Bot className="w-4.5 h-4.5 text-purple-400" />
+            </div>
+            <div>
+              <h1 className="font-heading font-bold text-white text-lg">
+                Compliance Advisor
+              </h1>
+              <p className="text-xs text-[rgb(163,163,163)]">
+                AI-powered regulatory guidance &mdash; EU AI Act · GDPR · DPDP · NIST
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-green-400">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+            KB Online
+          </div>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="max-w-4xl mx-auto space-y-6">
+          {messages.map((msg) => (
+            <MessageBubble key={msg.id} msg={msg} />
+          ))}
+          <div ref={bottomRef} />
+        </div>
+      </div>
+
+      {/* Suggested chips */}
+      {messages.length <= 2 && (
+        <div className="px-6 pb-3 flex-shrink-0">
+          <div className="max-w-4xl mx-auto">
+            <p className="text-[10px] text-[rgb(115,115,115)] mb-2 flex items-center gap-1">
+              <Sparkles className="w-3 h-3" />
+              Suggested questions
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {SUGGESTED.map((q) => (
+                <button
+                  key={q}
+                  onClick={() => sendMessage(q)}
+                  disabled={sending}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full glass border border-white/[0.08] text-xs text-[rgb(163,163,163)] hover:text-white hover:border-blue-500/30 hover:bg-blue-500/10 transition-all disabled:opacity-50"
+                >
+                  {q}
+                  <ChevronRight className="w-3 h-3" />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Input bar */}
+      <div className="px-6 pb-6 pt-2 flex-shrink-0 border-t border-white/[0.06]">
+        <div className="max-w-4xl mx-auto">
+          <div className="glass border border-white/[0.10] rounded-2xl flex items-end gap-3 p-3 focus-within:border-blue-500/40 transition-colors">
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask about regulations, compliance requirements, or specific AI system obligations…"
+              rows={1}
+              disabled={sending}
+              className="flex-1 bg-transparent text-sm text-white placeholder-[rgb(115,115,115)] resize-none focus:outline-none leading-relaxed max-h-32 overflow-y-auto disabled:opacity-50"
+              style={{ minHeight: "1.5rem" }}
+            />
+            <button
+              onClick={() => sendMessage(input)}
+              disabled={!input.trim() || sending}
+              className="flex-shrink-0 w-9 h-9 rounded-xl bg-blue-500 hover:bg-blue-400 disabled:bg-white/[0.06] disabled:text-[rgb(115,115,115)] text-white flex items-center justify-center transition-all glow-blue disabled:shadow-none"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
+          <p className="text-[10px] text-[rgb(115,115,115)] text-center mt-2">
+            Shift+Enter for new line · Enter to send · Responses reference live regulation KB
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+=== webapp\app\incidents\page.tsx ===
+"use client";
+
+import { useState } from "react";
+import {
+  AlertTriangle,
+  Plus,
+  X,
+  Search,
+  ChevronDown,
+  Clock,
+  CheckCircle2,
+  ShieldAlert,
+  Eye,
+} from "lucide-react";
+import type { RiskLevel } from "@/lib/api";
+
+// ── Types ─────────────────────────────────────────────────────────────────
+type IncidentStatus = "INVESTIGATING" | "MITIGATING" | "RESOLVED" | "CLOSED";
+
+interface Incident {
+  id: string;
+  title: string;
+  system: string;
+  severity: RiskLevel;
+  status: IncidentStatus;
+  reportedBy: string;
+  createdAt: string;
+  updatedAt: string;
+  description: string;
+  affectedUsers?: number;
+}
+
+// ── Mock data ─────────────────────────────────────────────────────────────
+const MOCK_INCIDENTS: Incident[] = [
+  {
+    id: "INC-001",
+    title: "Loan model producing biased rejection rates for minority applicants",
+    system: "Loan Approval Model",
+    severity: "CRITICAL",
+    status: "INVESTIGATING",
+    reportedBy: "Risk Team",
+    createdAt: "Feb 20, 2026",
+    updatedAt: "Feb 24, 2026",
+    description:
+      "Statistical analysis revealed a 23% higher rejection rate for applicants from certain demographic groups that cannot be explained by creditworthiness factors alone.",
+    affectedUsers: 1847,
+  },
+  {
+    id: "INC-002",
+    title: "HR Screening Tool flagging protected-class keywords as negative signals",
+    system: "HR Screening Tool",
+    severity: "HIGH",
+    status: "MITIGATING",
+    reportedBy: "HR Ops",
+    createdAt: "Feb 15, 2026",
+    updatedAt: "Feb 22, 2026",
+    description:
+      "Model embeddings correlate language associated with certain protected groups with lower candidate scores, violating EEOC guidance on automated hiring tools.",
+    affectedUsers: 342,
+  },
+  {
+    id: "INC-003",
+    title: "Customer Analytics AI logging PII without consent flag",
+    system: "Customer Analytics AI",
+    severity: "MEDIUM",
+    status: "RESOLVED",
+    reportedBy: "Data Science",
+    createdAt: "Feb 10, 2026",
+    updatedAt: "Feb 18, 2026",
+    description:
+      "Event logs included unmasked email addresses and device fingerprints that should have been pseudonymised per GDPR Article 25 requirements.",
+    affectedUsers: 12400,
+  },
+  {
+    id: "INC-004",
+    title: "Pricing AI generating discriminatory quotes in protected ZIP codes",
+    system: "Pricing Optimization AI",
+    severity: "CRITICAL",
+    status: "INVESTIGATING",
+    reportedBy: "Revenue Ops",
+    createdAt: "Feb 8, 2026",
+    updatedAt: "Feb 24, 2026",
+    description:
+      "Dynamic pricing model correlates ZIP codes with demographic proxies, resulting in systematically higher quotes for residents of predominantly minority neighbourhoods.",
+    affectedUsers: 8200,
+  },
+  {
+    id: "INC-005",
+    title: "Content Moderation false-positive rate spike on non-English content",
+    system: "Content Moderation AI",
+    severity: "MEDIUM",
+    status: "MITIGATING",
+    reportedBy: "Platform Safety",
+    createdAt: "Feb 5, 2026",
+    updatedAt: "Feb 20, 2026",
+    description:
+      "Model accuracy drops to 61% for Arabic and Hindi content versus 94% for English, creating disproportionate moderation impact on non-English users.",
+    affectedUsers: 3100,
+  },
+  {
+    id: "INC-006",
+    title: "Fraud Detection generating excessive false positives for new accounts",
+    system: "Fraud Detection System",
+    severity: "LOW",
+    status: "CLOSED",
+    reportedBy: "Security Team",
+    createdAt: "Jan 25, 2026",
+    updatedAt: "Feb 10, 2026",
+    description:
+      "New account velocity feature causing 18% false positive rate, blocking legitimate customers and creating UDAAP compliance exposure.",
+    affectedUsers: 220,
+  },
+];
+
+// ── Style maps ────────────────────────────────────────────────────────────
+const SEVERITY_STYLES: Record<RiskLevel, string> = {
+  CRITICAL: "bg-red-500/15 text-red-400 border border-red-500/25",
+  HIGH: "bg-orange-500/15 text-orange-400 border border-orange-500/25",
+  MEDIUM: "bg-yellow-500/15 text-yellow-400 border border-yellow-500/25",
+  LOW: "bg-green-500/15 text-green-400 border border-green-500/25",
+};
+
+const STATUS_STYLES: Record<IncidentStatus, string> = {
+  INVESTIGATING: "bg-red-500/10 text-red-300 border border-red-500/20",
+  MITIGATING: "bg-orange-500/10 text-orange-300 border border-orange-500/20",
+  RESOLVED: "bg-green-500/10 text-green-300 border border-green-500/20",
+  CLOSED: "bg-white/[0.05] text-[rgb(115,115,115)] border border-white/[0.08]",
+};
+
+const STATUS_ICONS: Record<IncidentStatus, React.ElementType> = {
+  INVESTIGATING: ShieldAlert,
+  MITIGATING: Clock,
+  RESOLVED: CheckCircle2,
+  CLOSED: CheckCircle2,
+};
+
+// ── Report Incident Modal ─────────────────────────────────────────────────
+const AI_SYSTEMS = [
+  "Customer Analytics AI",
+  "Loan Approval Model",
+  "HR Screening Tool",
+  "Content Moderation AI",
+  "Fraud Detection System",
+  "Recommendation Engine",
+  "Churn Predictor",
+  "Pricing Optimization AI",
+];
+
+function ReportModal({ onClose }: { onClose: () => void }) {
+  const [form, setForm] = useState({
+    title: "",
+    system: "",
+    severity: "MEDIUM" as RiskLevel,
+    description: "",
+    reportedBy: "",
+  });
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitted(true);
+    setTimeout(onClose, 1800);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="relative glass-card w-full max-w-lg p-6 space-y-5 z-10">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-red-500/20 border border-red-500/30 flex items-center justify-center">
+              <AlertTriangle className="w-4 h-4 text-red-400" />
+            </div>
+            <div>
+              <h2 className="font-heading font-bold text-white text-base">
+                Report Incident
+              </h2>
+              <p className="text-xs text-[rgb(163,163,163)]">
+                Log a new compliance incident
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 rounded-lg hover:bg-white/[0.06] flex items-center justify-center transition-colors"
+          >
+            <X className="w-4 h-4 text-[rgb(163,163,163)]" />
+          </button>
+        </div>
+
+        {submitted ? (
+          <div className="py-8 text-center space-y-2">
+            <CheckCircle2 className="w-10 h-10 text-green-400 mx-auto" />
+            <p className="font-heading font-semibold text-white">
+              Incident Reported
+            </p>
+            <p className="text-xs text-[rgb(163,163,163)]">
+              The incident has been logged and assigned an ID.
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Title */}
+            <div>
+              <label className="text-xs font-medium text-[rgb(163,163,163)] mb-1.5 block">
+                Incident Title *
+              </label>
+              <input
+                required
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                placeholder="Brief description of the incident"
+                className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white placeholder-[rgb(115,115,115)] focus:outline-none focus:border-blue-500/50 transition-colors"
+              />
+            </div>
+
+            {/* System + Severity row */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-[rgb(163,163,163)] mb-1.5 block">
+                  Affected System *
+                </label>
+                <div className="relative">
+                  <select
+                    required
+                    value={form.system}
+                    onChange={(e) => setForm({ ...form, system: e.target.value })}
+                    className="w-full appearance-none bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors pr-8"
+                  >
+                    <option value="" disabled className="bg-[rgb(10,10,10)]">
+                      Select system
+                    </option>
+                    {AI_SYSTEMS.map((s) => (
+                      <option key={s} value={s} className="bg-[rgb(10,10,10)]">
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[rgb(115,115,115)] pointer-events-none" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-[rgb(163,163,163)] mb-1.5 block">
+                  Severity *
+                </label>
+                <div className="relative">
+                  <select
+                    value={form.severity}
+                    onChange={(e) =>
+                      setForm({ ...form, severity: e.target.value as RiskLevel })
+                    }
+                    className="w-full appearance-none bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors pr-8"
+                  >
+                    {(["CRITICAL", "HIGH", "MEDIUM", "LOW"] as RiskLevel[]).map(
+                      (s) => (
+                        <option key={s} value={s} className="bg-[rgb(10,10,10)]">
+                          {s}
+                        </option>
+                      )
+                    )}
+                  </select>
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[rgb(115,115,115)] pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
+            {/* Reported by */}
+            <div>
+              <label className="text-xs font-medium text-[rgb(163,163,163)] mb-1.5 block">
+                Reported By *
+              </label>
+              <input
+                required
+                value={form.reportedBy}
+                onChange={(e) => setForm({ ...form, reportedBy: e.target.value })}
+                placeholder="Team or person reporting this"
+                className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white placeholder-[rgb(115,115,115)] focus:outline-none focus:border-blue-500/50 transition-colors"
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="text-xs font-medium text-[rgb(163,163,163)] mb-1.5 block">
+                Description *
+              </label>
+              <textarea
+                required
+                rows={3}
+                value={form.description}
+                onChange={(e) =>
+                  setForm({ ...form, description: e.target.value })
+                }
+                placeholder="Describe what happened, impact, and any immediate actions taken…"
+                className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-white placeholder-[rgb(115,115,115)] focus:outline-none focus:border-blue-500/50 transition-colors resize-none leading-relaxed"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 btn-pill btn-ghost text-sm"
+              >
+                Cancel
+              </button>
+              <button type="submit" className="flex-1 btn-pill btn-primary text-sm">
+                Submit Incident
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Detail Drawer ─────────────────────────────────────────────────────────
+function IncidentDetail({
+  incident,
+  onClose,
+}: {
+  incident: Incident;
+  onClose: () => void;
+}) {
+  const StatusIcon = STATUS_ICONS[incident.status];
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="relative glass-sidebar w-full max-w-md h-full flex flex-col z-10 border-l border-white/[0.08]">
+        {/* Header */}
+        <div className="px-6 py-5 border-b border-white/[0.06] flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <span
+                className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${SEVERITY_STYLES[incident.severity]}`}
+              >
+                {incident.severity}
+              </span>
+              <span
+                className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex items-center gap-1 ${STATUS_STYLES[incident.status]}`}
+              >
+                <StatusIcon className="w-3 h-3" />
+                {incident.status}
+              </span>
+            </div>
+            <p className="text-[10px] text-blue-400 font-mono mb-1">
+              {incident.id}
+            </p>
+            <h2 className="font-heading font-bold text-white text-sm leading-snug">
+              {incident.title}
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex-shrink-0 w-7 h-7 rounded-lg hover:bg-white/[0.06] flex items-center justify-center"
+          >
+            <X className="w-4 h-4 text-[rgb(163,163,163)]" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+          {/* Meta */}
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: "System", value: incident.system },
+              { label: "Reported By", value: incident.reportedBy },
+              { label: "Created", value: incident.createdAt },
+              { label: "Last Updated", value: incident.updatedAt },
+              ...(incident.affectedUsers
+                ? [
+                    {
+                      label: "Affected Users",
+                      value: incident.affectedUsers.toLocaleString(),
+                    },
+                  ]
+                : []),
+            ].map((item) => (
+              <div key={item.label} className="glass-card p-3 rounded-xl">
+                <p className="text-[10px] text-[rgb(115,115,115)] uppercase tracking-wider mb-1">
+                  {item.label}
+                </p>
+                <p className="text-xs text-white font-medium">{item.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Description */}
+          <div>
+            <p className="text-xs font-semibold text-[rgb(163,163,163)] uppercase tracking-wider mb-2">
+              Description
+            </p>
+            <p className="text-sm text-white/80 leading-relaxed">
+              {incident.description}
+            </p>
+          </div>
+
+          {/* Timeline placeholder */}
+          <div>
+            <p className="text-xs font-semibold text-[rgb(163,163,163)] uppercase tracking-wider mb-3">
+              Timeline
+            </p>
+            <div className="space-y-3">
+              {[
+                {
+                  label: "Incident reported",
+                  time: incident.createdAt,
+                  dot: "bg-red-400",
+                },
+                {
+                  label: "Assigned to compliance team",
+                  time: incident.createdAt,
+                  dot: "bg-orange-400",
+                },
+                {
+                  label: "Status updated",
+                  time: incident.updatedAt,
+                  dot: "bg-blue-400",
+                },
+              ].map((t, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <div className="flex flex-col items-center mt-1 flex-shrink-0">
+                    <div className={`w-2 h-2 rounded-full ${t.dot}`} />
+                    {i < 2 && <div className="w-px h-4 bg-white/[0.06] mt-1" />}
+                  </div>
+                  <div>
+                    <p className="text-xs text-white">{t.label}</p>
+                    <p className="text-[10px] text-[rgb(115,115,115)]">{t.time}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="px-6 py-4 border-t border-white/[0.06] flex gap-3">
+          <button className="flex-1 btn-pill btn-ghost text-xs">
+            Escalate
+          </button>
+          <button className="flex-1 btn-pill btn-primary text-xs">
+            Update Status
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────
+export default function IncidentsPage() {
+  const [search, setSearch] = useState("");
+  const [severityFilter, setSeverityFilter] = useState<"ALL" | RiskLevel>("ALL");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | IncidentStatus>("ALL");
+  const [showModal, setShowModal] = useState(false);
+  const [selected, setSelected] = useState<Incident | null>(null);
+
+  const filtered = MOCK_INCIDENTS.filter((inc) => {
+    const matchSearch =
+      search === "" ||
+      inc.title.toLowerCase().includes(search.toLowerCase()) ||
+      inc.system.toLowerCase().includes(search.toLowerCase()) ||
+      inc.id.toLowerCase().includes(search.toLowerCase());
+    const matchSeverity = severityFilter === "ALL" || inc.severity === severityFilter;
+    const matchStatus = statusFilter === "ALL" || inc.status === statusFilter;
+    return matchSearch && matchSeverity && matchStatus;
+  });
+
+  const openCount = MOCK_INCIDENTS.filter(
+    (i) => i.status === "INVESTIGATING" || i.status === "MITIGATING"
+  ).length;
+  const criticalCount = MOCK_INCIDENTS.filter(
+    (i) => i.severity === "CRITICAL"
+  ).length;
+
+  return (
+    <>
+      {showModal && <ReportModal onClose={() => setShowModal(false)} />}
+      {selected && (
+        <IncidentDetail incident={selected} onClose={() => setSelected(null)} />
+      )}
+
+      <div className="p-6 max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="font-heading font-bold text-2xl text-white">
+              Incident Management
+            </h1>
+            <p className="text-sm text-[rgb(163,163,163)] mt-0.5">
+              {openCount} open incidents · {criticalCount} critical
+            </p>
+          </div>
+          <button
+            onClick={() => setShowModal(true)}
+            className="btn-pill btn-primary flex items-center gap-2"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Report Incident
+          </button>
+        </div>
+
+        {/* Summary cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {(
+            [
+              {
+                label: "Total",
+                value: MOCK_INCIDENTS.length,
+                color: "text-white",
+                bg: "bg-white/[0.06]",
+              },
+              {
+                label: "Investigating",
+                value: MOCK_INCIDENTS.filter((i) => i.status === "INVESTIGATING")
+                  .length,
+                color: "text-red-400",
+                bg: "bg-red-500/10",
+              },
+              {
+                label: "Mitigating",
+                value: MOCK_INCIDENTS.filter((i) => i.status === "MITIGATING")
+                  .length,
+                color: "text-orange-400",
+                bg: "bg-orange-500/10",
+              },
+              {
+                label: "Resolved",
+                value: MOCK_INCIDENTS.filter(
+                  (i) => i.status === "RESOLVED" || i.status === "CLOSED"
+                ).length,
+                color: "text-green-400",
+                bg: "bg-green-500/10",
+              },
+            ] as const
+          ).map((s) => (
+            <div key={s.label} className="glass-card p-4">
+              <p
+                className={`font-heading font-bold text-3xl ${s.color}`}
+              >
+                {s.value}
+              </p>
+              <p className="text-xs text-[rgb(163,163,163)] mt-0.5">{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Filters */}
+        <div className="glass-card p-4 flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-48">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[rgb(115,115,115)]" />
+            <input
+              type="text"
+              placeholder="Search incidents…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl pl-9 pr-3 py-2 text-sm text-white placeholder-[rgb(115,115,115)] focus:outline-none focus:border-blue-500/50 transition-colors"
+            />
+          </div>
+
+          {/* Severity */}
+          <div className="flex items-center gap-1.5">
+            {(["ALL", "CRITICAL", "HIGH", "MEDIUM", "LOW"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setSeverityFilter(s)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  severityFilter === s
+                    ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                    : "text-[rgb(163,163,163)] hover:text-white hover:bg-white/[0.05] border border-transparent"
+                }`}
+              >
+                {s === "ALL" ? "All" : s}
+              </button>
+            ))}
+          </div>
+
+          {/* Status */}
+          <div className="flex items-center gap-1.5">
+            {(
+              [
+                "ALL",
+                "INVESTIGATING",
+                "MITIGATING",
+                "RESOLVED",
+                "CLOSED",
+              ] as const
+            ).map((s) => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  statusFilter === s
+                    ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                    : "text-[rgb(163,163,163)] hover:text-white hover:bg-white/[0.05] border border-transparent"
+                }`}
+              >
+                {s === "ALL" ? "All Status" : s}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="glass-card overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-white/[0.06]">
+                {[
+                  "ID",
+                  "Incident",
+                  "System",
+                  "Severity",
+                  "Status",
+                  "Reported",
+                  "Updated",
+                  "",
+                ].map((h) => (
+                  <th
+                    key={h}
+                    className="px-4 py-3 text-left text-[10px] font-semibold text-[rgb(115,115,115)] uppercase tracking-wider"
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((inc, idx) => {
+                const StatusIcon = STATUS_ICONS[inc.status];
+                return (
+                  <tr
+                    key={inc.id}
+                    onClick={() => setSelected(inc)}
+                    className={`border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors cursor-pointer ${
+                      idx === filtered.length - 1 ? "border-b-0" : ""
+                    }`}
+                  >
+                    <td className="px-4 py-3.5">
+                      <span className="text-xs font-mono text-blue-400">
+                        {inc.id}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5 max-w-xs">
+                      <p className="text-sm font-medium text-white line-clamp-2 leading-snug">
+                        {inc.title}
+                      </p>
+                      {inc.affectedUsers && (
+                        <p className="text-[10px] text-[rgb(115,115,115)] mt-0.5">
+                          {inc.affectedUsers.toLocaleString()} users affected
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <span className="text-xs text-[rgb(163,163,163)]">
+                        {inc.system}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <span
+                        className={`text-[10px] px-2.5 py-1 rounded-full font-semibold ${SEVERITY_STYLES[inc.severity]}`}
+                      >
+                        {inc.severity}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <span
+                        className={`text-[10px] px-2.5 py-1 rounded-full font-medium flex items-center gap-1 w-fit ${STATUS_STYLES[inc.status]}`}
+                      >
+                        <StatusIcon className="w-3 h-3" />
+                        {inc.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <span className="text-xs text-[rgb(163,163,163)]">
+                        {inc.createdAt}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <span className="text-xs text-[rgb(163,163,163)]">
+                        {inc.updatedAt}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <button className="text-xs text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1 transition-colors">
+                        <Eye className="w-3.5 h-3.5" />
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {filtered.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={8}
+                    className="px-4 py-12 text-center text-sm text-[rgb(115,115,115)]"
+                  >
+                    No incidents match your filters.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
+}
+
+
+=== webapp\app\regulations\page.tsx ===
+"use client";
+
+import { useState } from "react";
+import { Search, Filter } from "lucide-react";
+import RegulationCard from "@/components/RegulationCard";
+import type { RegulationStatus } from "@/lib/api";
+
+// ── Mock data ─────────────────────────────────────────────────────────────
+const REGULATIONS: Array<{
+  id: string;
+  name: string;
+  jurisdiction: string;
+  effectiveDate: string;
+  description: string;
+  status: RegulationStatus;
+  applicableSystems: number;
+  tags: string[];
+}> = [
+  {
+    id: "euaia",
+    name: "EU AI Act",
+    jurisdiction: "European Union",
+    effectiveDate: "Aug 2024",
+    description:
+      "The EU's comprehensive risk-based regulatory framework for artificial intelligence, classifying AI systems by risk tier and imposing conformity obligations on high-risk applications.",
+    status: "ACTIVE",
+    applicableSystems: 4,
+    tags: ["High-Risk AI", "Transparency", "Human Oversight"],
+  },
+  {
+    id: "gdpr",
+    name: "GDPR",
+    jurisdiction: "European Union",
+    effectiveDate: "May 2018",
+    description:
+      "General Data Protection Regulation governing the processing of personal data of EU residents. Directly impacts AI systems that consume or generate personal data.",
+    status: "ACTIVE",
+    applicableSystems: 8,
+    tags: ["Data Privacy", "Consent", "Right to Explanation"],
+  },
+  {
+    id: "iso42001",
+    name: "ISO/IEC 42001",
+    jurisdiction: "International",
+    effectiveDate: "Dec 2023",
+    description:
+      "International standard providing requirements for an AI management system (AIMS), helping organisations govern AI responsibly at an enterprise level.",
+    status: "ACTIVE",
+    applicableSystems: 6,
+    tags: ["AI Governance", "Risk Management", "Auditing"],
+  },
+  {
+    id: "nistai",
+    name: "NIST AI RMF 1.0",
+    jurisdiction: "United States",
+    effectiveDate: "Jan 2023",
+    description:
+      "NIST Artificial Intelligence Risk Management Framework providing voluntary guidance to manage AI risks through four core functions: Govern, Map, Measure, and Manage.",
+    status: "ACTIVE",
+    applicableSystems: 5,
+    tags: ["Risk Management", "Trustworthy AI", "Voluntary"],
+  },
+  {
+    id: "ecoa",
+    name: "ECOA / Regulation B",
+    jurisdiction: "United States",
+    effectiveDate: "Oct 1974",
+    description:
+      "Equal Credit Opportunity Act requiring lenders to provide adverse action notices and prohibiting discrimination in credit decisions, including those made by AI models.",
+    status: "ACTIVE",
+    applicableSystems: 2,
+    tags: ["Fair Lending", "Financial", "Adverse Action"],
+  },
+  {
+    id: "uk-ai",
+    name: "UK AI Regulatory Principles",
+    jurisdiction: "United Kingdom",
+    effectiveDate: "Mar 2023",
+    description:
+      "UK's pro-innovation, sector-led approach to AI regulation based on five cross-sector principles: safety, transparency, fairness, accountability, and contestability.",
+    status: "ACTIVE",
+    applicableSystems: 3,
+    tags: ["Principles-Based", "Pro-Innovation", "Cross-Sector"],
+  },
+  {
+    id: "ca-cpra",
+    name: "CPRA (California)",
+    jurisdiction: "California, US",
+    effectiveDate: "Jan 2023",
+    description:
+      "California Privacy Rights Act expanding consumer rights over personal data and automated decision-making, including the right to opt out of profiling.",
+    status: "ACTIVE",
+    applicableSystems: 4,
+    tags: ["Data Privacy", "Automated Decisions", "Consumer Rights"],
+  },
+  {
+    id: "india-pdp",
+    name: "India DPDP Act 2023",
+    jurisdiction: "India",
+    effectiveDate: "TBD",
+    description:
+      "India's Digital Personal Data Protection Act 2023 establishing rules for processing digital personal data with consent-based obligations and data fiduciary duties.",
+    status: "UPCOMING",
+    applicableSystems: 2,
+    tags: ["Data Privacy", "Consent", "APAC"],
+  },
+  {
+    id: "sr117",
+    name: "SR 11-7 (Model Risk Mgmt)",
+    jurisdiction: "United States",
+    effectiveDate: "Apr 2011",
+    description:
+      "Federal Reserve and OCC supervisory guidance on model risk management for financial institutions, requiring validation, documentation, and ongoing monitoring of models.",
+    status: "ACTIVE",
+    applicableSystems: 3,
+    tags: ["Financial", "Model Validation", "Banking"],
+  },
+];
+
+const JURISDICTIONS = [
+  "All",
+  "European Union",
+  "United States",
+  "United Kingdom",
+  "India",
+  "International",
+  "California, US",
+];
+
+export default function RegulationsPage() {
+  const [search, setSearch] = useState("");
+  const [jurisdiction, setJurisdiction] = useState("All");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | RegulationStatus>(
+    "ALL"
+  );
+
+  const filtered = REGULATIONS.filter((r) => {
+    const matchSearch =
+      search === "" ||
+      r.name.toLowerCase().includes(search.toLowerCase()) ||
+      r.description.toLowerCase().includes(search.toLowerCase()) ||
+      r.tags.some((t) => t.toLowerCase().includes(search.toLowerCase()));
+    const matchJurisdiction =
+      jurisdiction === "All" || r.jurisdiction === jurisdiction;
+    const matchStatus =
+      statusFilter === "ALL" || r.status === statusFilter;
+    return matchSearch && matchJurisdiction && matchStatus;
+  });
+
+  const activeCount = REGULATIONS.filter((r) => r.status === "ACTIVE").length;
+  const upcomingCount = REGULATIONS.filter(
+    (r) => r.status === "UPCOMING"
+  ).length;
+
+  return (
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="font-heading font-bold text-2xl text-white">
+            Regulation Library
+          </h1>
+          <p className="text-sm text-[rgb(163,163,163)] mt-0.5">
+            {activeCount} active · {upcomingCount} upcoming
+          </p>
+        </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="glass-card px-3 py-2 text-xs flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-green-400" />
+            <span className="text-[rgb(163,163,163)]">Active</span>
+            <span className="text-white font-bold ml-1">{activeCount}</span>
+          </div>
+          <div className="glass-card px-3 py-2 text-xs flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-blue-400" />
+            <span className="text-[rgb(163,163,163)]">Upcoming</span>
+            <span className="text-white font-bold ml-1">{upcomingCount}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="glass-card p-4 flex flex-wrap gap-3 items-center">
+        {/* Search */}
+        <div className="relative flex-1 min-w-48">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[rgb(115,115,115)]" />
+          <input
+            type="text"
+            placeholder="Search regulations, tags..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl pl-9 pr-3 py-2 text-sm text-white placeholder-[rgb(115,115,115)] focus:outline-none focus:border-blue-500/50 transition-colors"
+          />
+        </div>
+
+        {/* Jurisdiction filter */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <Filter className="w-3.5 h-3.5 text-[rgb(115,115,115)] flex-shrink-0" />
+          {JURISDICTIONS.map((j) => (
+            <button
+              key={j}
+              onClick={() => setJurisdiction(j)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                jurisdiction === j
+                  ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                  : "text-[rgb(163,163,163)] hover:text-white hover:bg-white/[0.05] border border-transparent"
+              }`}
+            >
+              {j}
+            </button>
+          ))}
+        </div>
+
+        {/* Status filter */}
+        <div className="flex items-center gap-1.5">
+          {(["ALL", "ACTIVE", "UPCOMING", "DRAFT"] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(s)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                statusFilter === s
+                  ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                  : "text-[rgb(163,163,163)] hover:text-white hover:bg-white/[0.05] border border-transparent"
+              }`}
+            >
+              {s === "ALL" ? "All Statuses" : s}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Cards grid */}
+      {filtered.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map((reg) => (
+            <div key={reg.id}>
+              <RegulationCard
+                name={reg.name}
+                jurisdiction={reg.jurisdiction}
+                effectiveDate={reg.effectiveDate}
+                description={reg.description}
+                status={reg.status}
+                applicableSystems={reg.applicableSystems}
+              />
+              {/* Tags */}
+              <div className="flex flex-wrap gap-1.5 mt-2 px-1">
+                {reg.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.05] text-[rgb(115,115,115)] border border-white/[0.06]"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="glass-card p-12 text-center">
+          <p className="text-sm text-[rgb(115,115,115)]">
+            No regulations match your filters.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+=== webapp\app\reports\page.tsx ===
+"use client";
+
+import { useState } from "react";
+import {
+  BarChart3,
+  ClipboardList,
+  Scale,
+  FileCode2,
+  TrendingUp,
+  Download,
+  RefreshCw,
+  CheckCircle2,
+  Clock,
+  ChevronRight,
+  Sparkles,
+} from "lucide-react";
+
+// ── Types ─────────────────────────────────────────────────────────────────
+type ReportStatus = "READY" | "GENERATING" | "DONE";
+
+interface ReportType {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  iconColor: string;
+  iconBg: string;
+  accentBorder: string;
+  lastGenerated?: string;
+  estimatedTime: string;
+}
+
+interface RecentReport {
+  id: string;
+  name: string;
+  type: string;
+  generatedAt: string;
+  size: string;
+  status: "COMPLETE" | "FAILED";
+}
+
+// ── Report type definitions ───────────────────────────────────────────────
+const REPORT_TYPES: ReportType[] = [
+  {
+    id: "audit",
+    title: "Compliance Audit Report",
+    description:
+      "Full compliance posture across all registered AI systems. Includes regulation mapping, gap analysis, and remediation priorities.",
+    icon: ClipboardList,
+    iconColor: "text-blue-400",
+    iconBg: "bg-blue-500/15",
+    accentBorder: "border-l-blue-500/50",
+    lastGenerated: "Feb 20, 2026",
+    estimatedTime: "~45 sec",
+  },
+  {
+    id: "bias",
+    title: "Bias & Fairness Report",
+    description:
+      "Demographic parity, disparate impact, and equalised odds metrics across all AI systems with historical trend analysis.",
+    icon: Scale,
+    iconColor: "text-purple-400",
+    iconBg: "bg-purple-500/15",
+    accentBorder: "border-l-purple-500/50",
+    lastGenerated: "Feb 18, 2026",
+    estimatedTime: "~30 sec",
+  },
+  {
+    id: "model-card",
+    title: "Model Card Bundle",
+    description:
+      "Auto-generated model cards for all registered AI systems following Google Model Card and EU AI Act Annex IV documentation standards.",
+    icon: FileCode2,
+    iconColor: "text-green-400",
+    iconBg: "bg-green-500/15",
+    accentBorder: "border-l-green-500/50",
+    lastGenerated: "Feb 15, 2026",
+    estimatedTime: "~1 min",
+  },
+  {
+    id: "gap",
+    title: "Gap Analysis Report",
+    description:
+      "Identifies compliance gaps against selected regulatory frameworks (EU AI Act, GDPR, NIST AI RMF) with actionable remediation steps.",
+    icon: TrendingUp,
+    iconColor: "text-orange-400",
+    iconBg: "bg-orange-500/15",
+    accentBorder: "border-l-orange-500/50",
+    lastGenerated: "Feb 10, 2026",
+    estimatedTime: "~50 sec",
+  },
+];
+
+const RECENT_REPORTS: RecentReport[] = [
+  {
+    id: "RPT-024",
+    name: "Compliance Audit — Feb 2026",
+    type: "Audit",
+    generatedAt: "Feb 20, 2026 14:32",
+    size: "2.4 MB",
+    status: "COMPLETE",
+  },
+  {
+    id: "RPT-023",
+    name: "Bias & Fairness — Feb 2026",
+    type: "Bias",
+    generatedAt: "Feb 18, 2026 09:15",
+    size: "1.1 MB",
+    status: "COMPLETE",
+  },
+  {
+    id: "RPT-022",
+    name: "Model Card Bundle — Feb 2026",
+    type: "Model Card",
+    generatedAt: "Feb 15, 2026 16:48",
+    size: "3.8 MB",
+    status: "COMPLETE",
+  },
+  {
+    id: "RPT-021",
+    name: "Gap Analysis — GDPR Focus",
+    type: "Gap Analysis",
+    generatedAt: "Feb 10, 2026 11:20",
+    size: "0.9 MB",
+    status: "COMPLETE",
+  },
+  {
+    id: "RPT-020",
+    name: "Compliance Audit — Jan 2026",
+    type: "Audit",
+    generatedAt: "Jan 31, 2026 10:05",
+    size: "2.1 MB",
+    status: "COMPLETE",
+  },
+  {
+    id: "RPT-019",
+    name: "Gap Analysis — EU AI Act Focus",
+    type: "Gap Analysis",
+    generatedAt: "Jan 25, 2026 14:00",
+    size: "1.2 MB",
+    status: "FAILED",
+  },
+];
+
+// ── Report card ───────────────────────────────────────────────────────────
+function ReportCard({ report }: { report: ReportType }) {
+  const [status, setStatus] = useState<ReportStatus>("READY");
+  const Icon = report.icon;
+
+  const generate = () => {
+    if (status === "GENERATING") return;
+    setStatus("GENERATING");
+    setTimeout(() => setStatus("DONE"), 3000);
+  };
+
+  return (
+    <div
+      className={`glass-card p-5 border-l-4 ${report.accentBorder} flex flex-col gap-4`}
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className={`w-10 h-10 rounded-xl ${report.iconBg} flex items-center justify-center flex-shrink-0`}
+        >
+          <Icon className={`w-5 h-5 ${report.iconColor}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-heading font-bold text-white text-sm">
+            {report.title}
+          </h3>
+          <p className="text-xs text-[rgb(163,163,163)] mt-1 leading-relaxed">
+            {report.description}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between text-[10px] text-[rgb(115,115,115)]">
+        <span>
+          {report.lastGenerated
+            ? `Last: ${report.lastGenerated}`
+            : "Never generated"}
+        </span>
+        <span>{report.estimatedTime}</span>
+      </div>
+
+      <div className="flex items-center gap-2">
+        {status === "DONE" ? (
+          <>
+            <button className="flex-1 btn-pill btn-ghost text-xs flex items-center justify-center gap-1.5">
+              <Download className="w-3.5 h-3.5" />
+              Download PDF
+            </button>
+            <button
+              onClick={() => setStatus("READY")}
+              className="flex-shrink-0 w-9 h-9 rounded-xl glass border border-white/[0.08] flex items-center justify-center hover:bg-white/[0.08] transition-colors"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-[rgb(163,163,163)]" />
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={generate}
+            disabled={status === "GENERATING"}
+            className="w-full btn-pill btn-primary text-xs flex items-center justify-center gap-2 disabled:opacity-70"
+          >
+            {status === "GENERATING" ? (
+              <>
+                <Sparkles className="w-3.5 h-3.5 animate-spin" />
+                Generating…
+              </>
+            ) : (
+              <>
+                <BarChart3 className="w-3.5 h-3.5" />
+                Generate Report
+              </>
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────
+export default function ReportsPage() {
+  return (
+    <div className="p-6 max-w-7xl mx-auto space-y-8">
+      {/* Header */}
+      <div>
+        <h1 className="font-heading font-bold text-2xl text-white">
+          Reports Centre
+        </h1>
+        <p className="text-sm text-[rgb(163,163,163)] mt-0.5">
+          Generate and download compliance reports for your AI systems
+        </p>
+      </div>
+
+      {/* Report type cards */}
+      <div>
+        <h2 className="font-heading font-semibold text-white text-sm mb-4 flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-blue-400" />
+          Generate Report
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {REPORT_TYPES.map((r) => (
+            <ReportCard key={r.id} report={r} />
+          ))}
+        </div>
+      </div>
+
+      {/* Recent reports */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-heading font-semibold text-white text-sm flex items-center gap-2">
+            <Clock className="w-4 h-4 text-[rgb(163,163,163)]" />
+            Recent Reports
+          </h2>
+          <button className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-0.5 transition-colors">
+            View all <ChevronRight className="w-3 h-3" />
+          </button>
+        </div>
+
+        <div className="glass-card overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-white/[0.06]">
+                {["Report ID", "Name", "Type", "Generated", "Size", "Status", ""].map(
+                  (h) => (
+                    <th
+                      key={h}
+                      className="px-4 py-3 text-left text-[10px] font-semibold text-[rgb(115,115,115)] uppercase tracking-wider"
+                    >
+                      {h}
+                    </th>
+                  )
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {RECENT_REPORTS.map((r, idx) => (
+                <tr
+                  key={r.id}
+                  className={`border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors ${
+                    idx === RECENT_REPORTS.length - 1 ? "border-b-0" : ""
+                  }`}
+                >
+                  <td className="px-4 py-3.5">
+                    <span className="text-xs font-mono text-blue-400">{r.id}</span>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <p className="text-sm font-medium text-white">{r.name}</p>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <span className="text-xs text-[rgb(163,163,163)]">{r.type}</span>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <span className="text-xs text-[rgb(163,163,163)]">
+                      {r.generatedAt}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    <span className="text-xs text-[rgb(163,163,163)]">{r.size}</span>
+                  </td>
+                  <td className="px-4 py-3.5">
+                    {r.status === "COMPLETE" ? (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/20 flex items-center gap-1 w-fit font-medium">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Complete
+                      </span>
+                    ) : (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 border border-red-500/20 w-fit font-medium block">
+                        Failed
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3.5">
+                    {r.status === "COMPLETE" && (
+                      <button className="text-xs text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1 transition-colors">
+                        <Download className="w-3.5 h-3.5" />
+                        Download
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+=== webapp\app\settings\page.tsx ===
+'use client';
+
+import { useState } from 'react';
+
+export default function SettingsPage() {
+  const [activeTab, setActiveTab] = useState('general');
+
+  const tabs = [
+    { id: 'general', label: 'General' },
+    { id: 'notifications', label: 'Notifications' },
+    { id: 'integrations', label: 'Integrations' },
+    { id: 'api', label: 'API Keys' },
+  ];
+
+  return (
+    <main className="min-h-screen bg-[rgb(5,5,5)] text-white p-8">
+      <h1 className="text-3xl font-bold italic mb-8">Settings</h1>
+
+      <div className="flex gap-2 mb-8">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2 rounded-full text-sm transition-all ${
+              activeTab === tab.id
+                ? 'bg-[rgb(59,130,246)] text-white'
+                : 'bg-[rgba(255,255,255,0.06)] text-[rgb(163,163,163)] hover:text-white'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="bg-[rgba(255,255,255,0.06)] backdrop-blur-md rounded-2xl p-6 border border-[rgba(255,255,255,0.1)]">
+        {activeTab === 'general' && (
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm text-[rgb(163,163,163)] mb-2">Company Name</label>
+              <input type="text" placeholder="RootedAI" className="w-full bg-[rgba(255,255,255,0.06)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[rgb(59,130,246)]" />
+            </div>
+            <div>
+              <label className="block text-sm text-[rgb(163,163,163)] mb-2">Industry</label>
+              <select className="w-full bg-[rgba(255,255,255,0.06)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[rgb(59,130,246)]">
+                <option>Technology</option>
+                <option>Healthcare</option>
+                <option>Finance</option>
+                <option>Education</option>
+                <option>Manufacturing</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-[rgb(163,163,163)] mb-2">Primary Jurisdictions</label>
+              <div className="flex flex-wrap gap-2">
+                {['EU', 'US', 'India', 'UK', 'China'].map((j) => (
+                  <span key={j} className="px-3 py-1 rounded-full text-sm bg-[rgba(59,130,246,0.2)] text-[rgb(96,165,250)] border border-[rgba(59,130,246,0.3)]">{j}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        {activeTab === 'notifications' && (
+          <div className="space-y-4">
+            <p className="text-[rgb(163,163,163)]">Configure alert channels for compliance notifications.</p>
+            {['Slack Webhook', 'Teams Webhook', 'Email (SMTP)'].map((ch) => (
+              <div key={ch}>
+                <label className="block text-sm text-[rgb(163,163,163)] mb-2">{ch}</label>
+                <input type="text" placeholder={`Enter ${ch} URL`} className="w-full bg-[rgba(255,255,255,0.06)] border border-[rgba(255,255,255,0.1)] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[rgb(59,130,246)]" />
+              </div>
+            ))}
+          </div>
+        )}
+        {activeTab === 'integrations' && (
+          <div className="space-y-4">
+            <p className="text-[rgb(163,163,163)]">Connect external services for compliance automation.</p>
+            {['Supabase', 'GitHub Actions', 'Jira', 'Slack'].map((svc) => (
+              <div key={svc} className="flex items-center justify-between p-4 bg-[rgba(255,255,255,0.03)] rounded-xl">
+                <span>{svc}</span>
+                <button className="px-4 py-1 rounded-full text-sm bg-[rgba(255,255,255,0.1)] hover:bg-[rgba(59,130,246,0.3)] transition-all">Connect</button>
+              </div>
+            ))}
+          </div>
+        )}
+        {activeTab === 'api' && (
+          <div className="space-y-4">
+            <p className="text-[rgb(163,163,163)]">Manage API keys for external integrations.</p>
+            <div className="p-4 bg-[rgba(255,255,255,0.03)] rounded-xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Production API Key</p>
+                  <p className="text-sm text-[rgb(163,163,163)]">adhi_pk_••••••••••••</p>
+                </div>
+                <button className="px-4 py-1 rounded-full text-sm bg-[rgba(239,68,68,0.2)] text-[rgb(239,68,68)] hover:bg-[rgba(239,68,68,0.3)] transition-all">Regenerate</button>
+              </div>
+            </div>
+            <button className="px-6 py-2 rounded-full bg-[rgb(59,130,246)] text-white hover:bg-[rgb(96,165,250)] transition-all">Generate New Key</button>
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}
+
+
+=== webapp\app\systems\[id]\page.tsx ===
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Circle,
+  AlertCircle,
+  Building2,
+  Calendar,
+  User,
+} from "lucide-react";
+import RiskBadge from "@/components/RiskBadge";
+import ComplianceScore from "@/components/ComplianceScore";
+import type { RiskLevel, ComplianceStatus } from "@/lib/api";
+
+// ── Mock data store ───────────────────────────────────────────────────────
+type ChecklistItem = {
+  id: string;
+  label: string;
+  completed: boolean;
+  required: boolean;
+  regulation?: string;
+};
+
+type SystemDetail = {
+  id: string;
+  name: string;
+  type: string;
+  description: string;
+  risk: RiskLevel;
+  status: ComplianceStatus;
+  score: number;
+  owner: string;
+  department: string;
+  lastAudit: string;
+  nextAudit: string;
+  regulations: string[];
+  checklist: ChecklistItem[];
+};
+
+const SYSTEMS: Record<string, SystemDetail> = {
+  "1": {
+    id: "1",
+    name: "Customer Analytics AI",
+    type: "Predictive Analytics",
+    description:
+      "Analyses customer behaviour, purchase patterns, and churn signals to surface actionable insights for the marketing team.",
+    risk: "LOW",
+    status: "COMPLIANT",
+    score: 94,
+    owner: "Data Science",
+    department: "Marketing",
+    lastAudit: "Feb 10, 2026",
+    nextAudit: "May 10, 2026",
+    regulations: ["EU AI Act", "GDPR", "ISO/IEC 42001"],
+    checklist: [
+      { id: "c1", label: "Model card published", completed: true, required: true, regulation: "EU AI Act" },
+      { id: "c2", label: "Data provenance documented", completed: true, required: true, regulation: "GDPR" },
+      { id: "c3", label: "Bias evaluation completed", completed: true, required: true, regulation: "EU AI Act" },
+      { id: "c4", label: "Human oversight mechanism in place", completed: true, required: true, regulation: "EU AI Act" },
+      { id: "c5", label: "Explainability report generated", completed: false, required: false, regulation: "ISO/IEC 42001" },
+      { id: "c6", label: "Annual accuracy benchmark", completed: true, required: true, regulation: "ISO/IEC 42001" },
+    ],
+  },
+  "2": {
+    id: "2",
+    name: "Loan Approval Model",
+    type: "Decision Automation",
+    description:
+      "Automated credit decisioning model that evaluates loan applications based on financial history, risk profile, and repayment capacity.",
+    risk: "HIGH",
+    status: "NON_COMPLIANT",
+    score: 61,
+    owner: "Risk Team",
+    department: "Finance",
+    lastAudit: "Jan 22, 2026",
+    nextAudit: "Feb 28, 2026",
+    regulations: ["EU AI Act (High-Risk)", "ECOA", "GDPR", "SR 11-7"],
+    checklist: [
+      { id: "c1", label: "High-risk system registration", completed: true, required: true, regulation: "EU AI Act" },
+      { id: "c2", label: "Conformity assessment completed", completed: false, required: true, regulation: "EU AI Act" },
+      { id: "c3", label: "Adverse action notices implemented", completed: true, required: true, regulation: "ECOA" },
+      { id: "c4", label: "Fair lending analysis documented", completed: false, required: true, regulation: "ECOA" },
+      { id: "c5", label: "Model validation by independent party", completed: false, required: true, regulation: "SR 11-7" },
+      { id: "c6", label: "Data retention policy enforced", completed: true, required: true, regulation: "GDPR" },
+    ],
+  },
+  "3": {
+    id: "3",
+    name: "HR Screening Tool",
+    type: "Candidate Ranking",
+    description:
+      "Resume parsing and candidate ranking system that shortlists applicants based on skills, experience match, and cultural fit signals.",
+    risk: "MEDIUM",
+    status: "REVIEW",
+    score: 78,
+    owner: "HR Ops",
+    department: "Human Resources",
+    lastAudit: "Feb 1, 2026",
+    nextAudit: "Apr 1, 2026",
+    regulations: ["EU AI Act (High-Risk)", "EEOC Guidelines", "GDPR"],
+    checklist: [
+      { id: "c1", label: "Bias audit on protected attributes", completed: true, required: true, regulation: "EEOC" },
+      { id: "c2", label: "Candidate notification policy", completed: true, required: true, regulation: "EU AI Act" },
+      { id: "c3", label: "Human review of all rejections", completed: false, required: true, regulation: "EU AI Act" },
+      { id: "c4", label: "Training data diversity assessment", completed: true, required: true, regulation: "EEOC" },
+      { id: "c5", label: "DPIA completed", completed: false, required: true, regulation: "GDPR" },
+      { id: "c6", label: "Accuracy benchmarks documented", completed: true, required: false },
+    ],
+  },
+};
+
+// ── Page ─────────────────────────────────────────────────────────────────
+export default async function SystemDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const system = SYSTEMS[id];
+
+  if (!system) notFound();
+
+  const completed = system.checklist.filter((c) => c.completed).length;
+  const total = system.checklist.length;
+
+  const statusLabel: Record<ComplianceStatus, string> = {
+    COMPLIANT: "Compliant",
+    NON_COMPLIANT: "Non-Compliant",
+    REVIEW: "Under Review",
+  };
+
+  const statusColor: Record<ComplianceStatus, string> = {
+    COMPLIANT: "text-green-400",
+    NON_COMPLIANT: "text-red-400",
+    REVIEW: "text-yellow-400",
+  };
+
+  return (
+    <div className="p-6 max-w-5xl mx-auto space-y-6">
+      {/* Back link */}
+      <Link
+        href="/systems"
+        className="inline-flex items-center gap-1.5 text-sm text-[rgb(163,163,163)] hover:text-white transition-colors"
+      >
+        <ArrowLeft className="w-3.5 h-3.5" />
+        AI System Registry
+      </Link>
+
+      {/* Header card */}
+      <div className="glass-card p-6">
+        <div className="flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <div className="flex items-center gap-3 flex-wrap mb-1">
+              <h1 className="font-heading font-bold text-2xl text-white">
+                {system.name}
+              </h1>
+              <RiskBadge level={system.risk} />
+            </div>
+            <p className="text-sm text-[rgb(163,163,163)]">{system.type}</p>
+            <p className="text-sm text-[rgb(163,163,163)] mt-2 max-w-2xl leading-relaxed">
+              {system.description}
+            </p>
+          </div>
+          <ComplianceScore score={system.score} size={100} />
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-5 pt-5 border-t border-white/[0.06]">
+          {[
+            { icon: User, label: "Owner", value: system.owner },
+            { icon: Building2, label: "Department", value: system.department },
+            { icon: Calendar, label: "Last Audit", value: system.lastAudit },
+            { icon: Calendar, label: "Next Audit", value: system.nextAudit },
+          ].map((meta) => (
+            <div key={meta.label} className="flex items-start gap-2">
+              <meta.icon className="w-3.5 h-3.5 text-[rgb(115,115,115)] mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-[10px] text-[rgb(115,115,115)] uppercase tracking-wider font-medium">
+                  {meta.label}
+                </p>
+                <p className="text-xs text-white font-medium mt-0.5">
+                  {meta.value}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2 mt-4">
+          <span
+            className={`text-sm font-semibold ${statusColor[system.status]}`}
+          >
+            {statusLabel[system.status]}
+          </span>
+          <span className="text-[rgb(115,115,115)] text-xs">·</span>
+          <span className="text-xs text-[rgb(163,163,163)]">
+            {completed}/{total} checklist items complete
+          </span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Compliance checklist */}
+        <div className="glass-card p-6 md:col-span-2">
+          <h2 className="font-heading font-bold text-white text-sm mb-4">
+            Compliance Checklist
+          </h2>
+          <div className="space-y-2">
+            {system.checklist.map((item) => (
+              <div
+                key={item.id}
+                className={`flex items-start gap-3 p-3 rounded-xl border transition-colors ${
+                  item.completed
+                    ? "border-green-500/15 bg-green-500/[0.04]"
+                    : item.required
+                    ? "border-red-500/15 bg-red-500/[0.04]"
+                    : "border-white/[0.06] bg-white/[0.02]"
+                }`}
+              >
+                {item.completed ? (
+                  <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
+                ) : item.required ? (
+                  <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                ) : (
+                  <Circle className="w-4 h-4 text-[rgb(115,115,115)] flex-shrink-0 mt-0.5" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p
+                    className={`text-xs font-medium ${
+                      item.completed
+                        ? "text-white"
+                        : item.required
+                        ? "text-red-300"
+                        : "text-[rgb(163,163,163)]"
+                    }`}
+                  >
+                    {item.label}
+                  </p>
+                  {item.regulation && (
+                    <p className="text-[10px] text-[rgb(115,115,115)] mt-0.5">
+                      {item.regulation}
+                    </p>
+                  )}
+                </div>
+                {item.required && !item.completed && (
+                  <span className="text-[10px] bg-red-500/10 text-red-400 border border-red-500/20 px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">
+                    REQUIRED
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Applicable regulations */}
+        <div className="glass-card p-6">
+          <h2 className="font-heading font-bold text-white text-sm mb-4">
+            Applicable Regulations
+          </h2>
+          <div className="space-y-2">
+            {system.regulations.map((reg) => (
+              <div
+                key={reg}
+                className="flex items-center gap-2 p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06] hover:border-blue-500/20 transition-colors cursor-pointer group"
+              >
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
+                <span className="text-xs text-[rgb(163,163,163)] group-hover:text-white transition-colors">
+                  {reg}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6 pt-4 border-t border-white/[0.06]">
+            <p className="text-[10px] text-[rgb(115,115,115)] uppercase tracking-wider font-medium mb-3">
+              Checklist Progress
+            </p>
+            <div className="relative pt-1">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs text-white font-semibold">
+                  {Math.round((completed / total) * 100)}%
+                </span>
+                <span className="text-[11px] text-[rgb(115,115,115)]">
+                  {completed}/{total}
+                </span>
+              </div>
+              <div className="w-full h-2 bg-white/[0.06] rounded-full">
+                <div
+                  className="h-2 rounded-full transition-all duration-700"
+                  style={{
+                    width: `${(completed / total) * 100}%`,
+                    background:
+                      completed / total >= 0.8
+                        ? "#22c55e"
+                        : completed / total >= 0.6
+                        ? "#eab308"
+                        : "#ef4444",
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+=== webapp\app\systems\page.tsx ===
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { Search, Plus, Filter } from "lucide-react";
+import RiskBadge from "@/components/RiskBadge";
+import type { RiskLevel, ComplianceStatus } from "@/lib/api";
+
+// ── Mock data ─────────────────────────────────────────────────────────────
+const MOCK_SYSTEMS: Array<{
+  id: string;
+  name: string;
+  type: string;
+  risk: RiskLevel;
+  status: ComplianceStatus;
+  score: number;
+  owner: string;
+  department: string;
+  lastAudit: string;
+}> = [
+  {
+    id: "1",
+    name: "Customer Analytics AI",
+    type: "Predictive Analytics",
+    risk: "LOW",
+    status: "COMPLIANT",
+    score: 94,
+    owner: "Data Science",
+    department: "Marketing",
+    lastAudit: "Feb 10, 2026",
+  },
+  {
+    id: "2",
+    name: "Loan Approval Model",
+    type: "Decision Automation",
+    risk: "HIGH",
+    status: "NON_COMPLIANT",
+    score: 61,
+    owner: "Risk Team",
+    department: "Finance",
+    lastAudit: "Jan 22, 2026",
+  },
+  {
+    id: "3",
+    name: "HR Screening Tool",
+    type: "Candidate Ranking",
+    risk: "MEDIUM",
+    status: "REVIEW",
+    score: 78,
+    owner: "HR Ops",
+    department: "Human Resources",
+    lastAudit: "Feb 1, 2026",
+  },
+  {
+    id: "4",
+    name: "Content Moderation AI",
+    type: "NLP Classification",
+    risk: "MEDIUM",
+    status: "COMPLIANT",
+    score: 82,
+    owner: "Platform Safety",
+    department: "Engineering",
+    lastAudit: "Feb 14, 2026",
+  },
+  {
+    id: "5",
+    name: "Fraud Detection System",
+    type: "Anomaly Detection",
+    risk: "HIGH",
+    status: "REVIEW",
+    score: 70,
+    owner: "Security Team",
+    department: "Finance",
+    lastAudit: "Jan 30, 2026",
+  },
+  {
+    id: "6",
+    name: "Recommendation Engine",
+    type: "Collaborative Filtering",
+    risk: "LOW",
+    status: "COMPLIANT",
+    score: 91,
+    owner: "Product AI",
+    department: "Product",
+    lastAudit: "Feb 18, 2026",
+  },
+  {
+    id: "7",
+    name: "Churn Predictor",
+    type: "Predictive Analytics",
+    risk: "LOW",
+    status: "COMPLIANT",
+    score: 88,
+    owner: "CX Analytics",
+    department: "Customer Success",
+    lastAudit: "Feb 5, 2026",
+  },
+  {
+    id: "8",
+    name: "Pricing Optimization AI",
+    type: "Dynamic Pricing",
+    risk: "CRITICAL",
+    status: "NON_COMPLIANT",
+    score: 44,
+    owner: "Revenue Ops",
+    department: "Finance",
+    lastAudit: "Jan 15, 2026",
+  },
+];
+
+const statusStyles: Record<ComplianceStatus, string> = {
+  COMPLIANT: "text-green-400",
+  NON_COMPLIANT: "text-red-400",
+  REVIEW: "text-yellow-400",
+};
+
+const statusLabel: Record<ComplianceStatus, string> = {
+  COMPLIANT: "Compliant",
+  NON_COMPLIANT: "Non-Compliant",
+  REVIEW: "In Review",
+};
+
+type FilterRisk = "ALL" | RiskLevel;
+type FilterStatus = "ALL" | ComplianceStatus;
+
+export default function SystemsPage() {
+  const [search, setSearch] = useState("");
+  const [riskFilter, setRiskFilter] = useState<FilterRisk>("ALL");
+  const [statusFilter, setStatusFilter] = useState<FilterStatus>("ALL");
+
+  const filtered = MOCK_SYSTEMS.filter((s) => {
+    const matchSearch =
+      search === "" ||
+      s.name.toLowerCase().includes(search.toLowerCase()) ||
+      s.type.toLowerCase().includes(search.toLowerCase()) ||
+      s.department.toLowerCase().includes(search.toLowerCase());
+    const matchRisk = riskFilter === "ALL" || s.risk === riskFilter;
+    const matchStatus = statusFilter === "ALL" || s.status === statusFilter;
+    return matchSearch && matchRisk && matchStatus;
+  });
+
+  return (
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-heading font-bold text-2xl text-white">
+            AI System Registry
+          </h1>
+          <p className="text-sm text-[rgb(163,163,163)] mt-0.5">
+            {MOCK_SYSTEMS.length} registered AI systems
+          </p>
+        </div>
+        <button className="btn-pill btn-primary flex items-center gap-2">
+          <Plus className="w-3.5 h-3.5" />
+          Register System
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="glass-card p-4 flex flex-wrap items-center gap-3">
+        {/* Search */}
+        <div className="relative flex-1 min-w-48">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[rgb(115,115,115)]" />
+          <input
+            type="text"
+            placeholder="Search systems..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-white/[0.05] border border-white/[0.08] rounded-xl pl-9 pr-3 py-2 text-sm text-white placeholder-[rgb(115,115,115)] focus:outline-none focus:border-blue-500/50 transition-colors"
+          />
+        </div>
+
+        {/* Risk filter */}
+        <div className="flex items-center gap-1.5">
+          <Filter className="w-3.5 h-3.5 text-[rgb(115,115,115)]" />
+          {(["ALL", "LOW", "MEDIUM", "HIGH", "CRITICAL"] as FilterRisk[]).map(
+            (r) => (
+              <button
+                key={r}
+                onClick={() => setRiskFilter(r)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  riskFilter === r
+                    ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                    : "text-[rgb(163,163,163)] hover:text-white hover:bg-white/[0.05] border border-transparent"
+                }`}
+              >
+                {r === "ALL" ? "All Risks" : r}
+              </button>
+            )
+          )}
+        </div>
+
+        {/* Status filter */}
+        <div className="flex items-center gap-1.5">
+          {(["ALL", "COMPLIANT", "NON_COMPLIANT", "REVIEW"] as FilterStatus[]).map(
+            (s) => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  statusFilter === s
+                    ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                    : "text-[rgb(163,163,163)] hover:text-white hover:bg-white/[0.05] border border-transparent"
+                }`}
+              >
+                {s === "ALL"
+                  ? "All Statuses"
+                  : s === "NON_COMPLIANT"
+                  ? "Non-Compliant"
+                  : s === "REVIEW"
+                  ? "In Review"
+                  : "Compliant"}
+              </button>
+            )
+          )}
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="glass-card overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-white/[0.06]">
+              {["System", "Type", "Risk Level", "Status", "Score", "Owner", "Last Audit", ""].map(
+                (h) => (
+                  <th
+                    key={h}
+                    className="px-4 py-3 text-left text-[10px] font-semibold text-[rgb(115,115,115)] uppercase tracking-wider"
+                  >
+                    {h}
+                  </th>
+                )
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((sys, idx) => (
+              <tr
+                key={sys.id}
+                className={`border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors ${
+                  idx === filtered.length - 1 ? "border-b-0" : ""
+                }`}
+              >
+                <td className="px-4 py-3.5">
+                  <div>
+                    <p className="text-sm font-medium text-white">{sys.name}</p>
+                    <p className="text-[11px] text-[rgb(115,115,115)]">
+                      {sys.department}
+                    </p>
+                  </div>
+                </td>
+                <td className="px-4 py-3.5">
+                  <span className="text-xs text-[rgb(163,163,163)]">
+                    {sys.type}
+                  </span>
+                </td>
+                <td className="px-4 py-3.5">
+                  <RiskBadge level={sys.risk} size="sm" />
+                </td>
+                <td className="px-4 py-3.5">
+                  <span
+                    className={`text-xs font-medium ${statusStyles[sys.status]}`}
+                  >
+                    {statusLabel[sys.status]}
+                  </span>
+                </td>
+                <td className="px-4 py-3.5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-16 h-1.5 bg-white/[0.06] rounded-full">
+                      <div
+                        className="h-1.5 rounded-full"
+                        style={{
+                          width: `${sys.score}%`,
+                          background:
+                            sys.score >= 80
+                              ? "#22c55e"
+                              : sys.score >= 60
+                              ? "#eab308"
+                              : "#ef4444",
+                        }}
+                      />
+                    </div>
+                    <span className="text-xs text-white font-medium">
+                      {sys.score}%
+                    </span>
+                  </div>
+                </td>
+                <td className="px-4 py-3.5">
+                  <span className="text-xs text-[rgb(163,163,163)]">
+                    {sys.owner}
+                  </span>
+                </td>
+                <td className="px-4 py-3.5">
+                  <span className="text-xs text-[rgb(163,163,163)]">
+                    {sys.lastAudit}
+                  </span>
+                </td>
+                <td className="px-4 py-3.5">
+                  <Link
+                    href={`/systems/${sys.id}`}
+                    className="text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
+                  >
+                    View →
+                  </Link>
+                </td>
+              </tr>
+            ))}
+            {filtered.length === 0 && (
+              <tr>
+                <td
+                  colSpan={8}
+                  className="px-4 py-12 text-center text-sm text-[rgb(115,115,115)]"
+                >
+                  No systems match your filters.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+
+=== webapp\app\globals.css ===
+@import "tailwindcss";
+
+:root {
+  /* RootedAI Brand Theme */
+  --bg-primary: rgb(5, 5, 5);
+  --bg-secondary: rgb(10, 10, 10);
+  --bg-card: rgba(255, 255, 255, 0.06);
+  --bg-card-hover: rgba(255, 255, 255, 0.09);
+
+  --accent-blue: rgb(59, 130, 246);
+  --accent-purple: rgb(168, 85, 247);
+  --accent-blue-glow: rgba(59, 130, 246, 0.3);
+  --accent-purple-glow: rgba(168, 85, 247, 0.3);
+
+  --text-primary: rgb(255, 255, 255);
+  --text-secondary: rgb(163, 163, 163);
+  --text-muted: rgb(115, 115, 115);
+
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.10);
+
+  /* Risk level colors */
+  --risk-low: rgb(34, 197, 94);
+  --risk-medium: rgb(234, 179, 8);
+  --risk-high: rgb(249, 115, 22);
+  --risk-critical: rgb(239, 68, 68);
+
+  --radius: 1rem;
+}
+
+@theme inline {
+  --color-background: var(--bg-primary);
+  --color-foreground: var(--text-primary);
+  --font-heading: var(--font-outfit);
+  --font-body: var(--font-montserrat);
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-montserrat), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Dotted grid background ── */
+.dot-grid {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* ── Glassmorphism utilities ── */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.glass-sidebar {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ── Typography ── */
+.font-heading {
+  font-family: var(--font-outfit), sans-serif;
+}
+
+/* ── Pill button ── */
+.btn-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-primary {
+  background: rgb(59, 130, 246);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: rgb(96, 165, 250);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+}
+
+.btn-ghost {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgb(163, 163, 163);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.10);
+  color: white;
+}
+
+/* ── Glow accents ── */
+.glow-blue {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.25);
+}
+
+.glow-purple {
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.25);
+}
+
+/* ── Custom scrollbar ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.10); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.20); }
+
+/* ── Radial gradient overlay ── */
+.bg-radial-dark {
+  background: radial-gradient(ellipse at 50% 0%, rgba(59, 130, 246, 0.06) 0%, transparent 60%);
+}
+
+
+=== webapp\app\layout.tsx ===
+import type { Metadata } from "next";
+import { Outfit, Montserrat } from "next/font/google";
+import "./globals.css";
+import Sidebar from "@/components/Sidebar";
+
+const outfit = Outfit({
+  variable: "--font-outfit",
+  subsets: ["latin"],
+  weight: ["400", "600", "700", "800"],
+});
+
+const montserrat = Montserrat({
+  variable: "--font-montserrat",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+});
+
+export const metadata: Metadata = {
+  title: "Adhi Compliance | AI Governance Platform",
+  description: "Enterprise AI compliance monitoring, risk assessment, and regulatory tracking powered by RootedAI.",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body
+        className={`${outfit.variable} ${montserrat.variable} antialiased bg-[rgb(5,5,5)] text-white min-h-screen`}
+      >
+        <div className="flex h-screen overflow-hidden">
+          <Sidebar />
+          <main className="flex-1 overflow-y-auto dot-grid bg-radial-dark">
+            {children}
+          </main>
+        </div>
+      </body>
+    </html>
+  );
+}
+
+
+=== webapp\app\page.tsx ===
+"use client";
+
+import { useState } from "react";
+import {
+  Cpu,
+  ShieldCheck,
+  AlertTriangle,
+  Calendar,
+  TrendingUp,
+  TrendingDown,
+  Activity,
+  ChevronRight,
+  RefreshCw,
+} from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import ComplianceScore from "@/components/ComplianceScore";
+import RiskBadge from "@/components/RiskBadge";
+import type { RiskLevel } from "@/lib/api";
+
+// ── Mock data ─────────────────────────────────────────────────────────────
+const stats = [
+  {
+    label: "Total AI Systems",
+    value: 12,
+    sub: "+2 added this month",
+    trend: "up" as const,
+    icon: Cpu,
+    color: "text-blue-400",
+    bg: "bg-blue-500/10",
+  },
+  {
+    label: "Compliant",
+    value: 9,
+    sub: "75% compliance rate",
+    trend: "up" as const,
+    icon: ShieldCheck,
+    color: "text-green-400",
+    bg: "bg-green-500/10",
+  },
+  {
+    label: "Open Incidents",
+    value: 3,
+    sub: "+1 this week",
+    trend: "down" as const,
+    icon: AlertTriangle,
+    color: "text-orange-400",
+    bg: "bg-orange-500/10",
+  },
+  {
+    label: "Upcoming Deadlines",
+    value: 5,
+    sub: "Next deadline in 3 days",
+    trend: "neutral" as const,
+    icon: Calendar,
+    color: "text-purple-400",
+    bg: "bg-purple-500/10",
+  },
+];
+
+const riskData = [
+  { name: "Low", value: 4, color: "#22c55e" },
+  { name: "Medium", value: 5, color: "#eab308" },
+  { name: "High", value: 2, color: "#f97316" },
+  { name: "Critical", value: 1, color: "#ef4444" },
+];
+
+const recentActivity = [
+  {
+    id: 1,
+    event: "Compliance audit completed",
+    system: "Customer Analytics AI",
+    time: "2 hours ago",
+    type: "success",
+  },
+  {
+    id: 2,
+    event: "Bias test flagged anomaly",
+    system: "Loan Approval Model",
+    time: "5 hours ago",
+    type: "warning",
+  },
+  {
+    id: 3,
+    event: "New regulation mapped",
+    system: "EU AI Act — Article 13",
+    time: "1 day ago",
+    type: "info",
+  },
+  {
+    id: 4,
+    event: "Incident resolved",
+    system: "HR Screening Tool",
+    time: "2 days ago",
+    type: "success",
+  },
+  {
+    id: 5,
+    event: "Risk level: HIGH → MEDIUM",
+    system: "Content Moderation AI",
+    time: "3 days ago",
+    type: "success",
+  },
+];
+
+const recentSystems: Array<{
+  id: string;
+  name: string;
+  risk: RiskLevel;
+  score: number;
+}> = [
+  { id: "1", name: "Customer Analytics AI", risk: "LOW", score: 94 },
+  { id: "2", name: "Loan Approval Model", risk: "HIGH", score: 61 },
+  { id: "3", name: "HR Screening Tool", risk: "MEDIUM", score: 78 },
+  { id: "4", name: "Content Moderation AI", risk: "MEDIUM", score: 82 },
+];
+
+const activityDotColor: Record<string, string> = {
+  success: "bg-green-400",
+  warning: "bg-orange-400",
+  info: "bg-blue-400",
+};
+
+// ── Custom tooltip for pie chart ──────────────────────────────────────────
+function CustomTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: Array<{ name: string; value: number; payload: { color: string } }>;
+}) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="glass px-3 py-2 rounded-lg text-xs">
+      <p className="font-semibold text-white">{payload[0].name} Risk</p>
+      <p style={{ color: payload[0].payload.color }}>
+        {payload[0].value} system{payload[0].value !== 1 ? "s" : ""}
+      </p>
+    </div>
+  );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────
+export default function DashboardPage() {
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1200);
+  };
+
+  return (
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-heading font-bold text-2xl text-white">
+            Compliance Dashboard
+          </h1>
+          <p className="text-sm text-[rgb(163,163,163)] mt-0.5">
+            AI governance overview &mdash; last updated just now
+          </p>
+        </div>
+        <button
+          onClick={handleRefresh}
+          className="btn-pill btn-ghost flex items-center gap-2"
+        >
+          <RefreshCw
+            className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`}
+          />
+          Refresh
+        </button>
+      </div>
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {stats.map((s) => {
+          const Icon = s.icon;
+          return (
+            <div key={s.label} className="glass-card p-5">
+              <div className="flex items-start justify-between mb-3">
+                <div className={`p-2 rounded-lg ${s.bg}`}>
+                  <Icon className={`w-4 h-4 ${s.color}`} />
+                </div>
+                {s.trend === "up" && (
+                  <TrendingUp className="w-3.5 h-3.5 text-green-400" />
+                )}
+                {s.trend === "down" && (
+                  <TrendingDown className="w-3.5 h-3.5 text-red-400" />
+                )}
+              </div>
+              <p className="font-heading font-bold text-3xl text-white">
+                {s.value}
+              </p>
+              <p className="text-xs font-medium text-[rgb(163,163,163)] mt-0.5">
+                {s.label}
+              </p>
+              <p className="text-[10px] text-[rgb(115,115,115)] mt-1">{s.sub}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Middle row: score + risk distribution */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Overall score */}
+        <div className="glass-card p-6 flex flex-col items-center justify-center gap-4">
+          <ComplianceScore score={78} size={140} label="Overall Compliance Score" />
+          <div className="w-full space-y-1.5">
+            {[
+              { label: "Documentation", score: 85 },
+              { label: "Data Governance", score: 72 },
+              { label: "Bias & Fairness", score: 68 },
+              { label: "Transparency", score: 90 },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center gap-2 text-xs">
+                <span className="text-[rgb(163,163,163)] w-32 flex-shrink-0">
+                  {item.label}
+                </span>
+                <div className="flex-1 h-1 bg-white/[0.06] rounded-full">
+                  <div
+                    className="h-1 rounded-full"
+                    style={{
+                      width: `${item.score}%`,
+                      background:
+                        item.score >= 80
+                          ? "#22c55e"
+                          : item.score >= 60
+                          ? "#eab308"
+                          : "#ef4444",
+                    }}
+                  />
+                </div>
+                <span className="text-white font-medium w-8 text-right">
+                  {item.score}%
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Risk distribution */}
+        <div className="glass-card p-6">
+          <h2 className="font-heading font-bold text-white text-sm mb-4">
+            Risk Distribution
+          </h2>
+          <ResponsiveContainer width="100%" height={160}>
+            <PieChart>
+              <Pie
+                data={riskData}
+                cx="50%"
+                cy="50%"
+                innerRadius={45}
+                outerRadius={70}
+                paddingAngle={3}
+                dataKey="value"
+              >
+                {riskData.map((entry) => (
+                  <Cell key={entry.name} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip content={<CustomTooltip />} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            {riskData.map((d) => (
+              <div key={d.name} className="flex items-center gap-2 text-xs">
+                <span
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ background: d.color }}
+                />
+                <span className="text-[rgb(163,163,163)]">{d.name}</span>
+                <span className="text-white font-semibold ml-auto">{d.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Top systems */}
+        <div className="glass-card p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-heading font-bold text-white text-sm">
+              Recent Systems
+            </h2>
+            <a
+              href="/systems"
+              className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-0.5"
+            >
+              View all <ChevronRight className="w-3 h-3" />
+            </a>
+          </div>
+          <div className="space-y-3">
+            {recentSystems.map((sys) => (
+              <a
+                key={sys.id}
+                href={`/systems/${sys.id}`}
+                className="flex items-center gap-3 group"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-white group-hover:text-blue-400 transition-colors truncate">
+                    {sys.name}
+                  </p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex-1 h-1 bg-white/[0.06] rounded-full">
+                      <div
+                        className="h-1 rounded-full"
+                        style={{
+                          width: `${sys.score}%`,
+                          background:
+                            sys.score >= 80
+                              ? "#22c55e"
+                              : sys.score >= 60
+                              ? "#eab308"
+                              : "#ef4444",
+                        }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-[rgb(163,163,163)] w-8 text-right">
+                      {sys.score}%
+                    </span>
+                  </div>
+                </div>
+                <RiskBadge level={sys.risk} size="sm" />
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Activity feed */}
+      <div className="glass-card p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-heading font-bold text-white text-sm flex items-center gap-2">
+            <Activity className="w-4 h-4 text-blue-400" />
+            Recent Activity
+          </h2>
+        </div>
+        <div className="space-y-0">
+          {recentActivity.map((item, idx) => (
+            <div
+              key={item.id}
+              className={`flex items-start gap-4 py-3 ${
+                idx < recentActivity.length - 1 ? "border-b border-white/[0.05]" : ""
+              }`}
+            >
+              <div className="flex flex-col items-center mt-1.5 flex-shrink-0">
+                <div
+                  className={`w-2 h-2 rounded-full ${activityDotColor[item.type]}`}
+                />
+                {idx < recentActivity.length - 1 && (
+                  <div className="w-px h-6 bg-white/[0.06] mt-1" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-white">{item.event}</p>
+                <p className="text-[11px] text-[rgb(163,163,163)] mt-0.5">
+                  {item.system}
+                </p>
+              </div>
+              <span className="text-[10px] text-[rgb(115,115,115)] flex-shrink-0 mt-0.5">
+                {item.time}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+=== webapp\components\ui\GlassCard.tsx ===
+import { clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
+    children: React.ReactNode;
+    className?: string;
+    hoverEffect?: boolean;
+}
+
+export function GlassCard({
+    children,
+    className,
+    hoverEffect = false,
+    ...props
+}: GlassCardProps) {
+    return (
+        <div
+            className={twMerge(
+                clsx(
+                    "bg-[var(--card)]/80 backdrop-blur-xl border border-[var(--border)]",
+                    "shadow-sm transition-all duration-300",
+                    hoverEffect && "hover:bg-[var(--secondary)]/20 hover:border-[var(--primary)]/40 hover:shadow-md",
+                    className
+                )
+            )}
+            {...props}
+        >
+            {children}
+        </div>
+    );
+}
+
+
+=== webapp\components\ComplianceScore.tsx ===
+interface ComplianceScoreProps {
+  score: number;
+  size?: number;
+  label?: string;
+}
+
+export default function ComplianceScore({
+  score,
+  size = 120,
+  label = "Compliance Score",
+}: ComplianceScoreProps) {
+  const radius = size * 0.38;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference * (1 - score / 100);
+
+  const color =
+    score >= 80
+      ? "#22c55e"
+      : score >= 60
+      ? "#eab308"
+      : score >= 40
+      ? "#f97316"
+      : "#ef4444";
+
+  const trackColor = "rgba(255,255,255,0.06)";
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div
+        className="relative flex items-center justify-center"
+        style={{ width: size, height: size }}
+      >
+        <svg
+          width={size}
+          height={size}
+          style={{ transform: "rotate(-90deg)" }}
+        >
+          {/* Track */}
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={trackColor}
+            strokeWidth={size * 0.07}
+          />
+          {/* Progress */}
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={color}
+            strokeWidth={size * 0.07}
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+            style={{ transition: "stroke-dashoffset 1s ease, stroke 0.3s" }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span
+            className="font-heading font-bold text-white leading-none"
+            style={{ fontSize: size * 0.22 }}
+          >
+            {score}
+          </span>
+          <span
+            className="text-[rgb(163,163,163)] leading-none mt-0.5"
+            style={{ fontSize: size * 0.1 }}
+          >
+            / 100
+          </span>
+        </div>
+      </div>
+      {label && (
+        <p className="text-xs text-[rgb(163,163,163)] font-medium text-center">
+          {label}
+        </p>
+      )}
+    </div>
+  );
+}
+
+
+=== webapp\components\ManagerConsole.tsx ===
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import { Mic, MicOff, Send, Bot, X, Check, ArrowRight, Sparkles, Settings as SettingsIcon } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
+
+// Mock Intelligence Data
+const DAILY_BRIEFING = [
+    { id: 1, type: "critical", msg: "Client Alpha: Contract renewal risk detects. Sentiment in last email was negative.", action: "Draft Renewal Strategy" },
+    { id: 2, type: "info", msg: "Legislation Update: New privacy laws affect 3 of your contracts.", action: "Review Impact" },
+    { id: 3, type: "success", msg: "Invoice #992 (Client Bravo) was paid early.", action: "Send Thank You" }
+];
+
+interface Message {
+    id: string;
+    role: "ai" | "user";
+    text: string;
+    action?: {
+        label: string;
+        type: "approve" | "review";
+        onAction: () => void;
+    };
+    timestamp: Date;
+}
+
+interface ManagerConsoleProps {
+    orgId: string;
+    clientName: string;
+}
+
+export default function ManagerConsole({ orgId, clientName }: ManagerConsoleProps) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [isListening, setIsListening] = useState(false);
+    const [input, setInput] = useState("");
+    const [messages, setMessages] = useState<Message[]>([
+        {
+            id: "init",
+            role: "ai",
+            text: `Good afternoon. I've analyzed intelligence for ${clientName}. Ready for your command.`,
+            timestamp: new Date()
+        }
+    ]);
+    const [filters, setFilters] = useState({
+        doc_type: "",
+    });
+
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages, isOpen]);
+
+    const handleSend = async () => {
+        if (!input.trim()) return;
+
+        // User Message
+        const userMsg: Message = { id: Date.now().toString(), role: "user", text: input, timestamp: new Date() };
+        setMessages(prev => [...prev, userMsg]);
+        setInput("");
+
+        // Real AI Response
+        try {
+            const response = await fetch('/api/chat/manager', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: input,
+                    orgId: orgId,
+                    filters: filters.doc_type ? { doc_type: filters.doc_type } : {}
+                })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                const aiMsg: Message = {
+                    id: (Date.now() + 1).toString(),
+                    role: "ai",
+                    text: data.text,
+                    timestamp: new Date(data.timestamp)
+                };
+                setMessages(prev => [...prev, aiMsg]);
+            }
+        } catch (error) {
+            console.error("Chat Error", error);
+        }
+    };
+
+    const toggleVoice = () => {
+        setIsListening(!isListening);
+        if (!isListening) {
+            // Mock voice input simulation
+            setTimeout(() => {
+                setInput("Schedule a meeting with Client Alpha for Tuesday");
+                setIsListening(false);
+            }, 2000);
+        }
+    };
+
+    return (
+        <>
+            {/* Floating Trigger Button */}
+            <motion.button
+                onClick={() => setIsOpen(!isOpen)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-secondary border border-white/10 shadow-[0_0_20px_rgba(0,0,0,0.5)] flex items-center justify-center text-foreground hover:bg-secondary/80 transition-colors"
+            >
+                {isOpen ? <X size={24} /> : <Bot size={28} className="text-[#F5F5DC]" />}
+                {!isOpen && (
+                    <span className="absolute -top-1 -right-1 h-3 w-3 bg-white rounded-full animate-pulse shadow-[0_0_5px_white]" />
+                )}
+            </motion.button>
+
+            {/* Console Window */}
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                        className="fixed bottom-24 right-6 w-96 h-[600px] z-50 glass-card rounded-3xl border border-white/10 flex flex-col overflow-hidden shadow-2xl"
+                    >
+                        {/* Header */}
+                        <div className="p-4 border-b border-white/5 bg-secondary/30 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
+                                <h3 className="font-bold text-white tracking-widest text-sm uppercase">{clientName} Intelligence</h3>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Link href="/settings" className="text-muted-foreground hover:text-white transition-colors">
+                                    <SettingsIcon size={16} />
+                                </Link>
+                                <Sparkles size={16} className="text-[#F5F5DC]" />
+                            </div>
+                        </div>
+
+                        {/* Chat / Feed Area */}
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+
+                            {/* ROI Ledger (AI Spend Tracker) */}
+                            <div className="glass-card rounded-xl p-4 border border-white/5 flex items-center justify-between">
+                                <div>
+                                    <h4 className="text-[10px] uppercase font-bold text-muted-foreground mb-1">AI ROI Ledger</h4>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xl font-bold text-white">$437.50</span>
+                                        <span className="text-xs text-green-400 font-bold bg-green-400/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                            <Sparkles size={10} /> Saved
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] text-muted-foreground mb-1">Cost (Est.)</p>
+                                    <p className="text-sm font-mono text-red-300">-$12.45</p>
+                                </div>
+                            </div>
+
+                            {/* Briefing Card (if at top) */}
+                            <div className="bg-white/5 rounded-xl p-4 border border-white/5 mb-6">
+                                <h4 className="text-[10px] uppercase font-bold text-muted-foreground mb-3">Daily Briefing</h4>
+                                <div className="space-y-3">
+                                    {DAILY_BRIEFING.map((item) => (
+                                        <div key={item.id} className="flex gap-3 items-start group cursor-pointer">
+                                            <div className={`mt-1 h-1.5 w-1.5 rounded-full shrink-0 ${item.type === 'critical' ? 'bg-white shadow-[0_0_5px_white]' : 'bg-[#D5CEA3]'}`} />
+                                            <div>
+                                                <p className="text-xs text-foreground/90 font-medium leading-relaxed group-hover:text-white transition-colors">{item.msg}</p>
+                                                <button className="text-[10px] text-[#D5CEA3] hover:text-white hover:underline mt-1 flex items-center gap-1">
+                                                    {item.action} <ArrowRight size={10} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Conversation */}
+                            {messages.map((msg) => (
+                                <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                    <div className={`max-w-[85%] rounded-2xl p-3 ${msg.role === 'user'
+                                        ? 'bg-[#F5F5DC] text-[#1A120B]'
+                                        : 'bg-secondary/50 border border-white/5 text-[#F5F5DC]'
+                                        }`}>
+                                        <p className="text-xs leading-relaxed">{msg.text}</p>
+
+                                        {/* Embedded Action */}
+                                        {msg.action && (
+                                            <div className="mt-3 pt-3 border-t border-white/10 flex justify-end">
+                                                <button
+                                                    onClick={msg.action.onAction}
+                                                    className="bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg border border-white/10 flex items-center gap-2 transition-colors"
+                                                >
+                                                    <Check size={12} /> {msg.action.label}
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                            <div ref={messagesEndRef} />
+                        </div>
+
+                        {/* Input Area */}
+                        <div className="p-3 bg-secondary/30 border-t border-white/5">
+                            {isListening && (
+                                <div className="mb-2 text-center text-[10px] font-mono text-white animate-pulse">Listening to your command...</div>
+                            )}
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={toggleVoice}
+                                    className={`p-3 rounded-xl border transition-all ${isListening ? 'bg-white text-black border-white' : 'bg-white/5 text-muted-foreground border-white/5 hover:bg-white/10'}`}
+                                >
+                                    {isListening ? <Mic size={18} /> : <MicOff size={18} />}
+                                </button>
+
+                                <select
+                                    value={filters.doc_type}
+                                    onChange={(e) => setFilters(prev => ({ ...prev, doc_type: e.target.value }))}
+                                    className="bg-white/5 border border-white/5 text-white text-[10px] rounded-xl px-2 focus:outline-none focus:border-white/20 [&>option]:text-black"
+                                >
+                                    <option value="" className="text-black">All Memory</option>
+                                    <option value="video" className="text-black">Video</option>
+                                    <option value="audio" className="text-black">Audio</option>
+                                    <option value="pdf" className="text-black">PDF</option>
+                                    <option value="image" className="text-black">Image</option>
+                                </select>
+                                <div className="flex-1 relative">
+                                    <input
+                                        type="text"
+                                        value={input}
+                                        onChange={(e) => setInput(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                                        placeholder="Give a task or ask for an update..."
+                                        className="w-full h-full bg-white/5 border border-white/5 rounded-xl px-4 text-xs text-white placeholder:text-muted-foreground focus:outline-none focus:border-white/20"
+                                    />
+                                    <button
+                                        onClick={handleSend}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-[#F5F5DC] hover:text-white transition-colors"
+                                    >
+                                        <Send size={14} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </>
+    );
+}
+
+
+=== webapp\components\RegulationCard.tsx ===
+import { ExternalLink, Calendar, Globe } from "lucide-react";
+
+interface RegulationCardProps {
+  name: string;
+  jurisdiction: string;
+  effectiveDate: string;
+  description: string;
+  status: "ACTIVE" | "UPCOMING" | "DRAFT";
+  applicableSystems?: number;
+  onClick?: () => void;
+}
+
+const statusStyles: Record<RegulationCardProps["status"], string> = {
+  ACTIVE: "bg-green-500/10 text-green-400 border-green-500/25",
+  UPCOMING: "bg-blue-500/10 text-blue-400 border-blue-500/25",
+  DRAFT: "bg-white/5 text-[rgb(163,163,163)] border-white/10",
+};
+
+export default function RegulationCard({
+  name,
+  jurisdiction,
+  effectiveDate,
+  description,
+  status,
+  applicableSystems = 0,
+  onClick,
+}: RegulationCardProps) {
+  return (
+    <div
+      onClick={onClick}
+      className="glass-card p-5 hover:border-blue-500/20 cursor-pointer group"
+    >
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <h3 className="font-heading font-bold text-white text-sm group-hover:text-blue-400 transition-colors">
+              {name}
+            </h3>
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${statusStyles[status]}`}
+            >
+              {status}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 text-[11px] text-[rgb(163,163,163)]">
+            <span className="flex items-center gap-1">
+              <Globe className="w-3 h-3" />
+              {jurisdiction}
+            </span>
+            <span className="flex items-center gap-1">
+              <Calendar className="w-3 h-3" />
+              {effectiveDate}
+            </span>
+          </div>
+        </div>
+        <ExternalLink className="w-3.5 h-3.5 text-[rgb(115,115,115)] group-hover:text-blue-400 transition-colors flex-shrink-0 ml-2 mt-0.5" />
+      </div>
+
+      <p className="text-[11px] text-[rgb(163,163,163)] line-clamp-2 mb-3 leading-relaxed">
+        {description}
+      </p>
+
+      {applicableSystems > 0 && (
+        <div className="text-[11px] text-[rgb(115,115,115)]">
+          Applies to{" "}
+          <span className="text-white font-semibold">{applicableSystems}</span>{" "}
+          system{applicableSystems !== 1 ? "s" : ""}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+=== webapp\components\RiskBadge.tsx ===
+interface RiskBadgeProps {
+  level: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  size?: "sm" | "md";
+}
+
+const config: Record<
+  RiskBadgeProps["level"],
+  { bg: string; text: string; border: string; dot: string }
+> = {
+  LOW: {
+    bg: "bg-green-500/10",
+    text: "text-green-400",
+    border: "border-green-500/25",
+    dot: "bg-green-400",
+  },
+  MEDIUM: {
+    bg: "bg-yellow-500/10",
+    text: "text-yellow-400",
+    border: "border-yellow-500/25",
+    dot: "bg-yellow-400",
+  },
+  HIGH: {
+    bg: "bg-orange-500/10",
+    text: "text-orange-400",
+    border: "border-orange-500/25",
+    dot: "bg-orange-400",
+  },
+  CRITICAL: {
+    bg: "bg-red-500/10",
+    text: "text-red-400",
+    border: "border-red-500/25",
+    dot: "bg-red-400",
+  },
+};
+
+export default function RiskBadge({ level, size = "md" }: RiskBadgeProps) {
+  const c = config[level];
+  const padding = size === "sm" ? "px-2 py-0.5" : "px-2.5 py-1";
+  const text = size === "sm" ? "text-[10px]" : "text-xs";
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 ${padding} rounded-full border font-semibold ${text} ${c.bg} ${c.text} ${c.border}`}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${c.dot}`} />
+      {level}
+    </span>
+  );
+}
+
+
+=== webapp\components\Sidebar.tsx ===
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  Cpu,
+  FileText,
+  MessageSquare,
+  ScanSearch,
+  AlertTriangle,
+  BarChart3,
+  Settings,
+  Shield,
+} from "lucide-react";
+
+const navItems = [
+  { href: "/", icon: LayoutDashboard, label: "Dashboard" },
+  { href: "/systems", icon: Cpu, label: "AI Systems" },
+  { href: "/regulations", icon: FileText, label: "Regulations" },
+  { href: "/chat", icon: MessageSquare, label: "Compliance Chat" },
+  { href: "/bias", icon: ScanSearch, label: "Bias Auditor" },
+  { href: "/incidents", icon: AlertTriangle, label: "Incidents" },
+  { href: "/reports", icon: BarChart3, label: "Reports" },
+  { href: "/settings", icon: Settings, label: "Settings" },
+];
+
+export default function Sidebar() {
+  const pathname = usePathname();
+
+  return (
+    <aside className="glass-sidebar w-60 flex-shrink-0 flex flex-col h-screen">
+      {/* Logo */}
+      <div className="px-5 py-5 border-b border-white/[0.06]">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center glow-blue flex-shrink-0">
+            <Shield className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <p className="font-heading font-black text-white tracking-[0.2em] text-[11px] uppercase">
+              ROOTEDAI
+            </p>
+            <p className="text-[10px] text-[rgb(163,163,163)] tracking-wide mt-0.5">
+              Compliance Platform
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+        {navItems.map(({ href, icon: Icon, label }) => {
+          const isActive =
+            pathname === href ||
+            (href !== "/" && pathname.startsWith(href));
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                isActive
+                  ? "bg-blue-500/15 text-blue-400 border border-blue-500/25"
+                  : "text-[rgb(163,163,163)] hover:text-white hover:bg-white/[0.05] border border-transparent"
+              }`}
+            >
+              <Icon className="w-4 h-4 flex-shrink-0" />
+              <span>{label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Status footer */}
+      <div className="px-3 py-4 border-t border-white/[0.06]">
+        <div className="glass-card p-3 text-xs rounded-xl">
+          <p className="text-[rgb(115,115,115)] font-medium uppercase tracking-wider text-[10px] mb-1.5">
+            Platform Status
+          </p>
+          <div className="flex items-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+            <span className="text-white font-medium">All systems normal</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+
+=== webapp\components\SystemCard.tsx ===
+import Link from "next/link";
+import { CheckCircle2, XCircle, Clock, ArrowRight } from "lucide-react";
+import RiskBadge from "./RiskBadge";
+
+interface SystemCardProps {
+  id: string;
+  name: string;
+  type: string;
+  risk: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  complianceScore: number;
+  status: "COMPLIANT" | "NON_COMPLIANT" | "REVIEW";
+  owner: string;
+  lastAudit: string;
+}
+
+const statusConfig = {
+  COMPLIANT: {
+    icon: CheckCircle2,
+    label: "Compliant",
+    color: "text-green-400",
+  },
+  NON_COMPLIANT: {
+    icon: XCircle,
+    label: "Non-Compliant",
+    color: "text-red-400",
+  },
+  REVIEW: {
+    icon: Clock,
+    label: "In Review",
+    color: "text-yellow-400",
+  },
+};
+
+export default function SystemCard({
+  id,
+  name,
+  type,
+  risk,
+  complianceScore,
+  status,
+  owner,
+  lastAudit,
+}: SystemCardProps) {
+  const sc = statusConfig[status];
+  const StatusIcon = sc.icon;
+
+  return (
+    <Link href={`/systems/${id}`}>
+      <div className="glass-card p-5 hover:border-blue-500/20 cursor-pointer group h-full">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex-1 min-w-0 mr-2">
+            <h3 className="font-heading font-bold text-white text-sm group-hover:text-blue-400 transition-colors truncate">
+              {name}
+            </h3>
+            <p className="text-[11px] text-[rgb(163,163,163)] mt-0.5">{type}</p>
+          </div>
+          <RiskBadge level={risk} />
+        </div>
+
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-1.5 text-xs">
+            <StatusIcon className={`w-3.5 h-3.5 ${sc.color}`} />
+            <span className={sc.color + " font-medium"}>{sc.label}</span>
+          </div>
+          <div className="text-xs text-[rgb(163,163,163)]">
+            <span className="text-white font-semibold">{complianceScore}%</span>
+          </div>
+        </div>
+
+        {/* Score bar */}
+        <div className="w-full h-1 bg-white/[0.06] rounded-full mb-3">
+          <div
+            className="h-1 rounded-full transition-all duration-700"
+            style={{
+              width: `${complianceScore}%`,
+              background:
+                complianceScore >= 80
+                  ? "#22c55e"
+                  : complianceScore >= 60
+                  ? "#eab308"
+                  : "#ef4444",
+            }}
+          />
+        </div>
+
+        <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between text-[11px] text-[rgb(115,115,115)]">
+          <span>{owner}</span>
+          <span>Audited {lastAudit}</span>
+        </div>
+
+        <div className="flex items-center justify-end mt-2 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity text-xs gap-1">
+          View details <ArrowRight className="w-3 h-3" />
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+
+=== webapp\components\VisualizationDisplay.tsx ===
+"use client";
+
+import {
+    ResponsiveContainer,
+    BarChart, Bar,
+    LineChart, Line,
+    PieChart, Pie,
+    Cell,
+    XAxis, YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend
+} from "recharts";
+import { Table, LayoutGrid, PieChart as PieChartIcon, TrendingUp, BarChart3 } from "lucide-react";
+
+export interface VizData {
+    type: "bar" | "line" | "pie" | "table";
+    title: string;
+    data: any[];
+    config?: {
+        xKey?: string;
+        yKey?: string;
+        colors?: string[];
+    };
+}
+
+const DEFAULT_COLORS = ["#00F5A0", "#00D9FF", "#7000FF", "#FF00D9", "#FFD900"];
+
+export default function VisualizationDisplay({ viz }: { viz: VizData }) {
+    const { type, title, data, config } = viz;
+
+    const renderChart = () => {
+        switch (type) {
+            case "bar":
+                return (
+                    <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={data}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                            <XAxis dataKey={config?.xKey || "name"} stroke="#888" fontSize={10} />
+                            <YAxis stroke="#888" fontSize={10} />
+                            <Tooltip
+                                contentStyle={{ backgroundColor: "#111", border: "1px solid #333", borderRadius: "8px" }}
+                                itemStyle={{ color: "#fff" }}
+                            />
+                            <Legend verticalAlign="top" height={36} />
+                            <Bar dataKey={config?.yKey || "value"} fill="#00F5A0" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                );
+            case "line":
+                return (
+                    <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={data}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                            <XAxis dataKey={config?.xKey || "name"} stroke="#888" fontSize={10} />
+                            <YAxis stroke="#888" fontSize={10} />
+                            <Tooltip
+                                contentStyle={{ backgroundColor: "#111", border: "1px solid #333", borderRadius: "8px" }}
+                                itemStyle={{ color: "#fff" }}
+                            />
+                            <Legend verticalAlign="top" height={36} />
+                            <Line type="monotone" dataKey={config?.yKey || "value"} stroke="#00D9FF" strokeWidth={2} dot={{ fill: "#00D9FF" }} />
+                        </LineChart>
+                    </ResponsiveContainer>
+                );
+            case "pie":
+                return (
+                    <ResponsiveContainer width="100%" height={300}>
+                        <PieChart>
+                            <Pie
+                                data={data}
+                                innerRadius={60}
+                                outerRadius={80}
+                                paddingAngle={5}
+                                dataKey={config?.yKey || "value"}
+                            >
+                                {data.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={DEFAULT_COLORS[index % DEFAULT_COLORS.length]} />
+                                ))}
+                            </Pie>
+                            <Tooltip
+                                contentStyle={{ backgroundColor: "#111", border: "1px solid #333", borderRadius: "8px" }}
+                                itemStyle={{ color: "#fff" }}
+                            />
+                            <Legend />
+                        </PieChart>
+                    </ResponsiveContainer>
+                );
+            case "table":
+                if (!data || data.length === 0) return null;
+                const headers = Object.keys(data[0]);
+                return (
+                    <div className="overflow-x-auto rounded-xl border border-white/5 bg-surface/50">
+                        <table className="w-full text-left text-xs border-collapse">
+                            <thead className="bg-white/5 uppercase tracking-wider text-[10px] font-bold text-muted">
+                                <tr>
+                                    {headers.map(h => (
+                                        <th key={h} className="p-3 border-b border-white/5">{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                                {data.map((row, i) => (
+                                    <tr key={i} className="hover:bg-white/5 transition-colors">
+                                        {headers.map(h => (
+                                            <td key={h} className="p-3 text-foreground/80">{row[h]}</td>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                );
+            default:
+                return null;
+        }
+    };
+
+    const Icon = type === "bar" ? BarChart3 : type === "line" ? TrendingUp : type === "pie" ? PieChartIcon : Table;
+
+    return (
+        <div className="glass-card p-6 rounded-2xl border border-white/5 space-y-4 animate-in fade-in zoom-in-95 duration-500">
+            <div className="flex items-center justify-between">
+                <h3 className="font-bold text-sm flex items-center gap-2">
+                    <Icon size={16} className="text-primary" />
+                    {title}
+                </h3>
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[10px] font-bold">
+                    Dynamic Insight
+                </div>
+            </div>
+            {renderChart()}
+        </div>
+    );
+}
+
+
+=== webapp\lib\api.ts ===
+import axios from "axios";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
+
+export const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: { "Content-Type": "application/json" },
+});
+
+// ── Legacy interfaces (kept for backwards compatibility) ──────────────────
+export interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface QueryRequest {
+  query: string;
+  organization_id?: string;
+  top_k?: number;
+}
+
+export interface SourceChunk {
+  source_file: string;
+  chunk_text: string;
+  start_time?: number;
+  end_time?: number;
+  score: number;
+  image_path?: string;
+  chunk_type: string;
+}
+
+export interface QueryResponse {
+  answer: string;
+  sources: SourceChunk[];
+  query_id: string;
+  viz_data?: {
+    type: "bar" | "line" | "pie" | "table";
+    title: string;
+    data: Record<string, unknown>[];
+    config?: { xKey?: string; yKey?: string };
+  };
+}
+
+// ── Compliance domain types ──────────────────────────────────────────────
+
+export type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+export type ComplianceStatus = "COMPLIANT" | "NON_COMPLIANT" | "REVIEW";
+export type RegulationStatus = "ACTIVE" | "UPCOMING" | "DRAFT";
+
+export interface Company {
+  id: string;
+  name: string;
+  industry: string;
+  jurisdiction: string;
+  overallScore: number;
+  totalSystems: number;
+  compliantSystems: number;
+  openIncidents: number;
+  upcomingDeadlines: number;
+}
+
+export interface AISystem {
+  id: string;
+  name: string;
+  type: string;
+  description: string;
+  risk: RiskLevel;
+  status: ComplianceStatus;
+  complianceScore: number;
+  owner: string;
+  department: string;
+  lastAudit: string;
+  nextAudit: string;
+  applicableRegulations: string[];
+  checklistItems: ChecklistItem[];
+}
+
+export interface ChecklistItem {
+  id: string;
+  label: string;
+  completed: boolean;
+  required: boolean;
+  regulation?: string;
+}
+
+export interface Regulation {
+  id: string;
+  name: string;
+  shortName: string;
+  jurisdiction: string;
+  effectiveDate: string;
+  description: string;
+  status: RegulationStatus;
+  applicableSystems: number;
+  requirements: string[];
+  tags: string[];
+}
+
+export interface Incident {
+  id: string;
+  title: string;
+  system: string;
+  severity: RiskLevel;
+  status: "OPEN" | "INVESTIGATING" | "RESOLVED";
+  createdAt: string;
+  resolvedAt?: string;
+  description: string;
+}
+
+export interface BiasReport {
+  id: string;
+  systemId: string;
+  systemName: string;
+  runDate: string;
+  overallScore: number;
+  metrics: BiasMetric[];
+  status: "PASS" | "WARN" | "FAIL";
+}
+
+export interface BiasMetric {
+  name: string;
+  value: number;
+  threshold: number;
+  status: "PASS" | "WARN" | "FAIL";
+}
+
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+  citations?: string[];
+}
+
+// ── Company endpoints ─────────────────────────────────────────────────────
+export const getCompany = async (): Promise<Company> => {
+  const response = await api.get<Company>("/compliance/company");
+  return response.data;
+};
+
+// ── AI Systems endpoints ──────────────────────────────────────────────────
+export const getSystems = async (): Promise<AISystem[]> => {
+  const response = await api.get<AISystem[]>("/compliance/systems");
+  return response.data;
+};
+
+export const getSystemById = async (id: string): Promise<AISystem> => {
+  const response = await api.get<AISystem>(`/compliance/systems/${id}`);
+  return response.data;
+};
+
+export const createSystem = async (
+  payload: Omit<AISystem, "id" | "checklistItems">
+): Promise<AISystem> => {
+  const response = await api.post<AISystem>("/compliance/systems", payload);
+  return response.data;
+};
+
+export const updateSystemChecklist = async (
+  systemId: string,
+  items: ChecklistItem[]
+): Promise<AISystem> => {
+  const response = await api.patch<AISystem>(
+    `/compliance/systems/${systemId}/checklist`,
+    { items }
+  );
+  return response.data;
+};
+
+// ── Regulations endpoints ─────────────────────────────────────────────────
+export const getRegulations = async (params?: {
+  jurisdiction?: string;
+  status?: RegulationStatus;
+  search?: string;
+}): Promise<Regulation[]> => {
+  const response = await api.get<Regulation[]>("/compliance/regulations", {
+    params,
+  });
+  return response.data;
+};
+
+export const getRegulationById = async (id: string): Promise<Regulation> => {
+  const response = await api.get<Regulation>(`/compliance/regulations/${id}`);
+  return response.data;
+};
+
+// ── Compliance summary ────────────────────────────────────────────────────
+export const getComplianceSummary = async () => {
+  const response = await api.get("/compliance/summary");
+  return response.data;
+};
+
+// ── Incidents endpoints ───────────────────────────────────────────────────
+export const getIncidents = async (): Promise<Incident[]> => {
+  const response = await api.get<Incident[]>("/compliance/incidents");
+  return response.data;
+};
+
+export const createIncident = async (
+  payload: Omit<Incident, "id" | "createdAt">
+): Promise<Incident> => {
+  const response = await api.post<Incident>("/compliance/incidents", payload);
+  return response.data;
+};
+
+export const resolveIncident = async (id: string): Promise<Incident> => {
+  const response = await api.patch<Incident>(
+    `/compliance/incidents/${id}/resolve`
+  );
+  return response.data;
+};
+
+// ── Bias auditor endpoints ────────────────────────────────────────────────
+export const getBiasReports = async (): Promise<BiasReport[]> => {
+  const response = await api.get<BiasReport[]>("/compliance/bias");
+  return response.data;
+};
+
+export const runBiasAudit = async (systemId: string): Promise<BiasReport> => {
+  const response = await api.post<BiasReport>("/compliance/bias/run", {
+    systemId,
+  });
+  return response.data;
+};
+
+// ── Compliance chat ───────────────────────────────────────────────────────
+export const sendComplianceChat = async (
+  message: string,
+  history: ChatMessage[]
+): Promise<ChatMessage> => {
+  const response = await api.post<ChatMessage>("/compliance/chat", {
+    message,
+    history,
+  });
+  return response.data;
+};
+
+// ── Legacy helpers (kept for existing code that imports them) ─────────────
+export const getOrganizations = async (): Promise<Organization[]> => {
+  const response = await api.get<Organization[]>("/organizations");
+  return response.data;
+};
+
+export const createOrganization = async (
+  name: string,
+  slug: string
+): Promise<Organization> => {
+  const response = await api.post<Organization>("/organizations", null, {
+    params: { name, slug: slug.toLowerCase() },
+  });
+  return response.data;
+};
+
+
+=== webapp\lib\context.tsx ===
+"use client";
+
+import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { getOrganizations, Organization } from "./api";
+
+interface OrgContextType {
+    selectedOrg: string;
+    setSelectedOrg: (org: string) => void;
+    organizations: Organization[];
+    refreshOrgs: () => Promise<void>;
+}
+
+const OrgContext = createContext<OrgContextType | undefined>(undefined);
+
+export function OrgProvider({ children }: { children: ReactNode }) {
+    const [selectedOrg, setSelectedOrg] = useState("default_org");
+    const [organizations, setOrganizations] = useState<Organization[]>([
+        { id: "default_org", name: "Internal (Default)", slug: "default_org" }
+    ]);
+
+    const refreshOrgs = async () => {
+        try {
+            const orgs = await getOrganizations();
+            if (orgs.length > 0) {
+                setOrganizations(orgs);
+                // If current selected isn't in new list, pick first one
+                if (!orgs.find(o => o.slug === selectedOrg)) {
+                    setSelectedOrg(orgs[0].slug);
+                }
+            }
+        } catch (error) {
+            console.error("Failed to fetch organizations:", error);
+        }
+    };
+
+    useEffect(() => {
+        refreshOrgs();
+    }, []);
+
+    return (
+        <OrgContext.Provider value={{ selectedOrg, setSelectedOrg, organizations, refreshOrgs }}>
+            {children}
+        </OrgContext.Provider>
+    );
+}
+
+export function useOrg() {
+    const context = useContext(OrgContext);
+    if (context === undefined) {
+        throw new Error("useOrg must be used within an OrgProvider");
+    }
+    return context;
+}
+
+
+=== webapp\lib\mock-data.ts ===
+
+import { Mail, Users, Database, Activity, Zap } from "lucide-react";
+
+// --- Types ---
+export interface LedgerItem {
+    id: string;
+    name: string;
+    type: "Strategy" | "Surveillance" | "Communication" | "Financial" | "Legal" | "Technical";
+    confidence: string;
+    status: "Verified" | "Analyzing" | "Flagged";
+    date: string;
+}
+
+export interface ClientHealth {
+    name: string;
+    volume: number;
+    status: "Healthy" | "Processing" | "Warning";
+    score: number;
+    lastUpdate: string;
+}
+
+export interface VolumeData {
+    month: string;
+    docs: number;
+    size: number;
+}
+
+// --- Data ---
+
+export const MOCK_LEDGER_DATA: LedgerItem[] = [
+    { id: "FIN-2025-001", name: "FY25 Strategy Deck.pdf", type: "Strategy", confidence: "98%", status: "Verified", date: "Jan 15, 2025" },
+    { id: "IMG-992", name: "Site_B_Drone_Footage.mov", type: "Surveillance", confidence: "92%", status: "Analyzing", date: "Today, 11:45 AM" },
+    { id: "EML-442", name: "Re: Merger Negotiation", type: "Communication", confidence: "96%", status: "Verified", date: "Yesterday, 6:15 PM" },
+    { id: "INV-X09", name: "Q1_Service_Invoice.pdf", type: "Financial", confidence: "78%", status: "Flagged", date: "Jan 10, 2025" },
+    { id: "LEG-771", name: "NDA_Signed_Beta.pdf", type: "Legal", confidence: "100%", status: "Verified", date: "Jan 05, 2025" },
+    { id: "API-LOG", name: "Access_Logs_Export.csv", type: "Technical", confidence: "88%", status: "Verified", date: "Today, 08:00 AM" },
+    { id: "AUD-REC", name: "Board_Meeting_Audio.mp3", type: "Communication", confidence: "85%", status: "Analyzing", date: "Jan 20, 2025" },
+];
+
+export const MOCK_DRAFT_ACTION = {
+    id: "draft_1",
+    type: "email" as const,
+    title: "Urgent: Compliance Violation Detected in Invoice #992",
+    recipient: "legal@client-alpha.com",
+    content: `Dear Legal Team,\n\nOur automated audit system has detected a critical mismatch between Invoice #992 and the original Purchase Order #331.\n\n- Discrepancy: Unit Price Variance (+15%)\n- Detected: Today, 10:42 AM\n\nPlease review the attached documentation immediately to avoid payment delays.\n\nBest regards,\nADHI Intelligence Agent`,
+    context: "Invoice #992 unit price ($150) does not match PO #331 ($130).",
+    integration_icon: Mail,
+    confidence: 98
+};
+
+export const MOCK_CLIENT_HEALTH: ClientHealth[] = [
+    { name: "Client Alpha", volume: 45, status: "Healthy", score: 98, lastUpdate: "2m ago" },
+    { name: "Client Bravo", volume: 32, status: "Processing", score: 92, lastUpdate: "15m ago" },
+    { name: "Client Charlie", volume: 18, status: "Warning", score: 76, lastUpdate: "1h ago" },
+    { name: "Client Delta", volume: 64, status: "Healthy", score: 99, lastUpdate: "5m ago" },
+];
+
+export const MOCK_VOLUME_DATA: VolumeData[] = [
+    { month: "Jan", docs: 45, size: 1.2 },
+    { month: "Feb", docs: 52, size: 1.5 },
+    { month: "Mar", docs: 38, size: 1.1 },
+    { month: "Apr", docs: 65, size: 2.1 },
+    { month: "May", docs: 48, size: 1.8 },
+    { month: "Jun", docs: 72, size: 2.5 },
+];
+
+export const DASHBOARD_STATS = [
+    { label: "Active Clients", value: "24", trend: "+3", icon: Users, color: "text-[var(--primary)]" },
+    { label: "Neural Index Size", value: "4.2 TB", trend: "+500GB", icon: Database, color: "text-[var(--secondary)]" },
+    { label: "Avg. Precision", value: "98.4%", trend: "+1.2%", icon: Zap, color: "text-[var(--primary)]" },
+    { label: "System Health", value: "99.9%", trend: "Stable", icon: Activity, color: "text-[var(--success)]" },
+];
+
+export const RECENT_LOGS = [
+    { type: "success", msg: "Client Delta: Video transcription complete for 'Audit_2024.mp4'", time: "Just now" },
+    { type: "warning", msg: "Client Charlie: Vision analysis delayed due to high pixel density on page 42", time: "12m ago" },
+    { type: "success", msg: "Client Alpha: Document similarity indexing cross-verified", time: "45m ago" },
+];
+
+
+=== webapp\lib\supabase.ts ===
+
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+export const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Helper to log AI usage
+export async function logAIUsage(
+    orgId: string,
+    feature: string,
+    model: string,
+    inputTokens: number,
+    outputTokens: number,
+    cost: number,
+    meta?: any
+) {
+    if (!orgId) return;
+
+    const { error } = await supabase.from('ai_usage_logs').insert({
+        org_id: orgId,
+        feature_name: feature,
+        model_used: model,
+        input_tokens: inputTokens,
+        output_tokens: outputTokens,
+        cost_usd: cost,
+        metadata: meta
+    });
+
+    if (error) console.error("Failed to log AI usage:", error);
+}
+
+
+=== webapp\next-env.d.ts ===
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+import "./.next/types/routes.d.ts";
+
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
+
+
+=== webapp\next.config.ts ===
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  /* config options here */
+  reactCompiler: true,
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: "http://127.0.0.1:8000/api/v1/:path*", // Proxy to Backend
+      },
+    ];
+  },
+};
+
+export default nextConfig;
+

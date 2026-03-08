@@ -1,0 +1,445 @@
+# Business Card Scanner - Process Flow
+
+## Overview
+
+This document outlines the complete end-to-end process flow for the Business Card Scanner application, from image capture to contact storage.
+
+---
+
+## High-Level Architecture
+
+```mermaid
+graph TB
+    User[User] --> Frontend[React Frontend]
+    Frontend --> Camera[Camera Capture]
+    Frontend --> Upload[File Upload]
+    Camera --> Backend[FastAPI Backend]
+    Upload --> Backend
+    Backend --> OCR[Florence-2-base OCR]
+    Backend --> Parser[Hybrid Parser]
+    OCR --> Parser
+    Parser --> LLM[Qwen LLM]
+    Parser --> Regex[Regex Extraction]
+    LLM --> Merge[Data Merger]
+    Regex --> Merge
+    Merge --> Validation[Validation]
+    Validation --> DB[(Supabase DB)]
+    DB --> Frontend
+```
+
+---
+
+## Detailed Process Flows
+
+### 1. Single-Side Card Scanning Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant F as Frontend
+    participant C as Camera/Upload
+    participant B as Backend API
+    participant O as Florence-2 OCR
+    participant P as Hybrid Parser
+    participant L as Qwen LLM
+    participant R as Regex Engine
+    participant D as Database
+
+    U->>F: Open App
+    F->>U: Display Upload Options
+    
+    alt Mobile Camera
+        U->>C: Click "Open Camera"
+        C->>U: Show In-Browser Camera
+        U->>C: Capture Photo
+        C->>F: Return Image File
+    else File Upload
+        U->>C: Drag & Drop / Browse
+        C->>F: Return Image File
+    end
+    
+    F->>B: POST /scan-card (image)
+    B->>O: Process Image
+    O->>O: Extract Text (OCR)
+    O->>B: Raw OCR Text
+    
+    B->>P: parse_card_text_hybrid(text)
+    
+    par Parallel Extraction
+        P->>R: Extract Structured Fields
+        R->>R: Phone, Email, Website, Zip
+        R->>P: Structured Data
+    and
+        P->>L: Extract Semantic Fields
+        L->>L: Name, Title, Company
+        L->>P: Semantic Data
+    end
+    
+    P->>P: Merge & Validate Data
+    P->>B: Parsed Contact Data
+    
+    B->>F: JSON Response
+    F->>U: Display Extracted Data
+    
+    U->>F: Review & Edit (optional)
+    U->>F: Click "Save Contact"
+    F->>D: Save to Supabase
+    D->>F: Confirmation
+    F->>U: Success Message
+```
+
+---
+
+### 2. Dual-Side Card Scanning Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant F as Frontend
+    participant C as Camera/Upload
+    participant B as Backend API
+    participant O as Florence-2 OCR
+    participant P as Parser
+    participant M as Merger
+    participant D as Database
+
+    U->>F: Select "Both Sides" Mode
+    F->>U: Prompt for Front Side
+    
+    U->>C: Upload/Capture Front
+    C->>F: Front Image Stored
+    F->>U: Show "Front ✓"
+    
+    F->>U: Prompt for Back Side
+    U->>C: Upload/Capture Back
+    C->>F: Back Image Stored
+    F->>U: Show "Front ✓ Back ✓"
+    
+    F->>B: POST /scan-card-dual (front, back)
+    
+    par Process Both Sides
+        B->>O: OCR Front Image
+        O->>O: Extract Front Text
+        O->>B: Front OCR Text
+    and
+        B->>O: OCR Back Image
+        O->>O: Extract Back Text
+        O->>B: Back OCR Text
+    end
+    
+    B->>P: Parse Front Text
+    P->>B: Front Data
+    
+    B->>P: Parse Back Text
+    P->>B: Back Data
+    
+    B->>M: merge_card_data(front, back)
+    M->>M: Apply Priority Rules
+    M->>M: Validate Merged Data
+    M->>B: Merged Contact Data
+    
+    B->>F: JSON Response
+    F->>U: Display Merged Data
+    
+    U->>F: Click "Save Contact"
+    F->>D: Save to Database
+    D->>F: Confirmation
+    F->>U: Success Message
+```
+
+---
+
+## Component-Level Process Details
+
+### A. Frontend Camera Capture Process
+
+```mermaid
+stateDiagram-v2
+    [*] --> Idle: App Loaded
+    Idle --> CameraRequested: User Clicks "Open Camera"
+    CameraRequested --> PermissionCheck: Request getUserMedia
+    
+    PermissionCheck --> CameraActive: Permission Granted
+    PermissionCheck --> PermissionDenied: Permission Denied
+    
+    CameraActive --> Capturing: User Clicks Capture
+    Capturing --> Preview: Photo Captured
+    
+    Preview --> Retake: User Clicks Retake
+    Preview --> Processing: User Clicks "Use Photo"
+    
+    Retake --> CameraActive
+    Processing --> Uploading: Convert to File
+    Uploading --> [*]: Send to Backend
+    
+    PermissionDenied --> [*]: Show Error
+```
+
+**Steps:**
+1. User clicks "Open Camera" button
+2. Browser requests camera permission via `navigator.mediaDevices.getUserMedia()`
+3. If granted, video stream starts in full-screen overlay
+4. User can toggle front/back camera
+5. User clicks capture button
+6. Canvas captures current video frame
+7. Preview shows captured image
+8. User can retake or confirm
+9. On confirm, image converted to JPEG File object
+10. File sent to processing pipeline
+
+---
+
+### B. Backend OCR Processing
+
+```mermaid
+graph LR
+    A[Image File] --> B[Load Image]
+    B --> C[Resize to 1024x1024]
+    C --> D[Florence-2-base Model]
+    D --> E[OCR Task]
+    E --> F[Extract Text]
+    F --> G[Post-process]
+    G --> H[Raw OCR Text]
+```
+
+**Process:**
+1. Receive image file from frontend
+2. Load image using PIL
+3. Resize to max 1024x1024 (maintain aspect ratio)
+4. Convert to RGB
+5. Pass to Florence-2-base model with `<OCR>` task
+6. Model generates text with bounding boxes
+7. Extract text content
+8. Return raw OCR text string
+
+**Performance:** ~3-7 seconds on CPU
+
+---
+
+### C. Hybrid Parser Process
+
+```mermaid
+graph TB
+    Start[Raw OCR Text] --> Split{Split Processing}
+    
+    Split --> Regex[Regex Extraction]
+    Split --> LLM[LLM Extraction]
+    
+    Regex --> RegexPhone[Extract Phones]
+    Regex --> RegexEmail[Extract Emails]
+    Regex --> RegexWeb[Extract Websites]
+    Regex --> RegexZip[Extract Zip Codes]
+    Regex --> RegexAddr[Extract Addresses]
+    
+    LLM --> Prompt[Build Context-Aware Prompt]
+    Prompt --> Generate[Generate Response]
+    Generate --> Parse[Parse JSON]
+    Parse --> LLMName[Extract Names]
+    Parse --> LLMTitle[Extract Job Title]
+    Parse --> LLMCompany[Extract Company]
+    
+    RegexPhone --> Merge[Merge Results]
+    RegexEmail --> Merge
+    RegexWeb --> Merge
+    RegexZip --> Merge
+    RegexAddr --> Merge
+    LLMName --> Merge
+    LLMTitle --> Merge
+    LLMCompany --> Merge
+    
+    Merge --> Validate[Validate & Clean]
+    Validate --> Output[Final Contact Data]
+```
+
+**Steps:**
+
+**Phase 1: Regex Extraction (Fast)**
+1. Extract phone numbers (validate 10-15 digits)
+2. Extract email addresses
+3. Extract website URLs
+4. Extract zip codes (5 digits only)
+5. Extract addresses using location keywords
+6. Remove extracted data from text
+
+**Phase 2: LLM Extraction (Accurate)**
+1. Build context string from regex results
+2. Create prompt with:
+   - Field definitions (context awareness)
+   - Extraction rules
+   - Examples
+   - Remaining text
+3. Send to Qwen-2.5-1.5B model (512 tokens)
+4. Parse JSON response
+5. Extract first_name, last_name, job_title, company_name
+
+**Phase 3: Merge & Validate**
+1. Combine regex + LLM results
+2. Validate phone numbers (not zip codes)
+3. Clean and normalize data
+4. Return complete contact object
+
+**Performance:** ~5-10 seconds total
+
+---
+
+### D. Dual-Side Merge Process
+
+```mermaid
+graph TB
+    Front[Front Side Data] --> Compare{Compare Fields}
+    Back[Back Side Data] --> Compare
+    
+    Compare --> Name[Merge Names]
+    Compare --> Contact[Merge Contact Info]
+    Compare --> Address[Merge Address]
+    Compare --> Company[Merge Company]
+    
+    Name --> Priority1{Front Priority}
+    Contact --> Priority2{Field-Specific Logic}
+    Address --> Priority3{More Complete}
+    Company --> Priority4{Front Priority}
+    
+    Priority1 --> Merged[Merged Data]
+    Priority2 --> Merged
+    Priority3 --> Merged
+    Priority4 --> Merged
+    
+    Merged --> Validate{Validate}
+    Validate --> Final[Final Contact]
+```
+
+**Merge Rules:**
+1. **Names**: Front side priority (usually person name on back)
+2. **Company**: Front side priority (company name typically on front)
+3. **Contact Info**: Field-specific:
+   - Email: Use non-empty value
+   - Phone: Distinguish mobile vs work
+   - Website: Use non-empty value
+4. **Address**: Choose more complete address
+5. **Raw Text**: Combine both with [FRONT]/[BACK] markers
+
+**Validation:**
+- Ensure at least name OR company exists
+- Ensure at least one contact method exists
+- Warn if critical data missing
+
+---
+
+## Data Flow Summary
+
+### Input → Output Transformation
+
+```
+User Image
+    ↓
+[Florence-2-base OCR]
+    ↓
+Raw Text: "PITCH MY VENTURE\nChandni Nagda\nFOUNDER\n+91 99675 28901\nchandni@pitchmyventure.com"
+    ↓
+[Hybrid Parser]
+    ↓
+Regex Extracts:
+- email: "chandni@pitchmyventure.com"
+- mobile_phone: "+91 99675 28901"
+    ↓
+LLM Extracts (with context):
+- first_name: "Chandni"
+- last_name: "Nagda"
+- job_title: "FOUNDER"
+- company_name: "PITCH MY VENTURE"
+    ↓
+[Merge & Validate]
+    ↓
+Final Contact JSON:
+{
+  "first_name": "Chandni",
+  "last_name": "Nagda",
+  "job_title": "FOUNDER",
+  "company_name": "PITCH MY VENTURE",
+  "email": "chandni@pitchmyventure.com",
+  "mobile_phone": "+91 99675 28901",
+  "website": "",
+  ...
+}
+    ↓
+[Save to Supabase]
+    ↓
+Contact Saved in Database
+```
+
+---
+
+## Performance Targets
+
+| Stage | Target Time | Current Performance |
+|-------|-------------|---------------------|
+| Image Upload | <1s | ✅ <1s |
+| OCR Processing | <7s | ✅ 3-7s (Florence-2-base) |
+| Hybrid Parsing | <8s | ✅ 5-10s |
+| Data Merge (dual) | <2s | ✅ <1s |
+| Database Save | <2s | ✅ <2s |
+| **Total Single** | **<20s** | **✅ 10-18s** |
+| **Total Dual** | **<25s** | **✅ 15-25s** |
+
+---
+
+## Error Handling Flow
+
+```mermaid
+graph TB
+    Process[Processing Step] --> Check{Error?}
+    
+    Check -->|Camera Permission| CamError[Show Permission Error]
+    Check -->|Upload Failed| UpError[Show Upload Error]
+    Check -->|OCR Failed| OCRError[Retry or Manual Entry]
+    Check -->|Parse Failed| ParseError[Show Partial Results]
+    Check -->|Save Failed| SaveError[Show Save Error + Retry]
+    Check -->|Success| Success[Display Results]
+    
+    CamError --> Fallback1[Offer File Upload]
+    UpError --> Fallback2[Try Again]
+    OCRError --> Fallback3[Manual Entry Option]
+    ParseError --> Fallback4[Allow Manual Edit]
+    SaveError --> Fallback5[Retry Button]
+```
+
+---
+
+## Key Features in Process
+
+1. **In-Browser Camera**: No page reloads, maintains state
+2. **Dual-Mode Scanning**: Sequential front/back capture
+3. **Hybrid Parsing**: Fast regex + accurate LLM
+4. **Smart Merging**: Intelligent priority rules for dual-side cards
+5. **Field Validation**: Prevents phone/zip confusion
+6. **Auto-Save**: Contacts saved automatically after parsing
+7. **Gold Theme**: Consistent visual design throughout
+8. **Mobile-Optimized**: Touch-friendly camera interface
+
+---
+
+## Technologies Used
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| **Frontend** | React + TypeScript | UI framework |
+| **Camera** | getUserMedia API | In-browser camera |
+| **Styling** | TailwindCSS + Custom CSS | Gold theme styling |
+| **Backend** | FastAPI (Python) | REST API server |
+| **OCR** | Florence-2-base | Text extraction |
+| **LLM** | Qwen-2.5-1.5B | Semantic parsing |
+| **Database** | Supabase (PostgreSQL) | Contact storage |
+| **Hosting** | Hugging Face Spaces | Deployment |
+
+---
+
+## Success Criteria
+
+✅ **Speed**: Processing completed in <20 seconds  
+✅ **Accuracy**: Correctly distinguishes company/person names  
+✅ **Accuracy**: Correctly distinguishes phone/zip codes  
+✅ **UX**: No page reloads on mobile camera usage  
+✅ **UX**: Clear visual feedback during processing  
+✅ **Reliability**: Graceful error handling  
+✅ **Feature**: Dual-side card support  
+✅ **Design**: Premium gold aesthetic

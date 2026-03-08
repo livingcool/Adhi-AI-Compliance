@@ -1,0 +1,87 @@
+You are writing end-to-end tests for Adhi Compliance using Playwright.
+
+Read the webapp codebase: app/*.tsx, app/**/*.tsx, components/*.tsx, lib/*.ts, package.json
+
+TASKS:
+
+1. SETUP PLAYWRIGHT:
+   Run: npx playwright install --with-deps chromium
+   Create playwright.config.ts with:
+   - baseURL: http://localhost:3000
+   - webServer: starts both backend (port 8000) and frontend (port 3000)
+   - Projects: chromium, mobile-chrome
+
+2. CREATE e2e/ directory with test files:
+
+3. CREATE e2e/auth.spec.ts:
+   - Test: login page renders correctly
+   - Test: login with invalid credentials shows error
+   - Test: login with valid credentials redirects to dashboard
+   - Test: logout clears session and redirects to login
+   - Test: accessing protected page without auth redirects to login
+
+4. CREATE e2e/dashboard.spec.ts:
+   - Test: dashboard loads with stat cards
+   - Test: compliance score circle renders
+   - Test: risk distribution chart renders
+   - Test: recent activity feed shows items
+   - Test: navigation to all pages works from sidebar
+
+5. CREATE e2e/systems.spec.ts:
+   - Test: systems page shows table of AI systems
+   - Test: clicking Register New System opens modal
+   - Test: filling and submitting form creates new system
+   - Test: clicking system row navigates to detail page
+   - Test: detail page shows compliance checklist
+   - Test: risk badge shows correct color per tier
+
+6. CREATE e2e/regulations.spec.ts:
+   - Test: regulation library loads with cards
+   - Test: search filters regulations by name
+   - Test: jurisdiction filter works
+   - Test: clicking regulation shows detail
+
+7. CREATE e2e/compliance-chat.spec.ts:
+   - Test: chat page renders with suggested questions
+   - Test: clicking suggested question populates input
+   - Test: sending message shows user bubble
+   - Test: AI response appears with citations
+
+8. CREATE e2e/incidents.spec.ts:
+   - Test: incident table loads
+   - Test: Report Incident button opens modal
+   - Test: filling incident form and submitting creates incident
+   - Test: severity badges render with correct colors
+
+9. CREATE e2e/bias.spec.ts:
+   - Test: bias page renders upload area
+   - Test: drag-drop file shows in upload queue
+   - Test: historical audits table loads
+
+10. CREATE e2e/reports.spec.ts:
+    - Test: report cards render
+    - Test: clicking Generate triggers loading state
+
+11. CREATE e2e/responsive.spec.ts:
+    - Test: sidebar collapses on mobile viewport
+    - Test: hamburger menu opens sidebar
+    - Test: tables have horizontal scroll on mobile
+    - Test: stat cards stack vertically on mobile
+
+12. CREATE e2e/accessibility.spec.ts:
+    - Test: all pages have no accessibility violations (use @axe-core/playwright)
+    - Test: keyboard navigation works (Tab through elements)
+    - Test: modals trap focus
+    - Test: Escape closes modals
+
+13. ADD to package.json scripts:
+    "test:e2e": "playwright test"
+    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:ui": "playwright test --ui"
+
+Run: npx playwright install chromium
+
+Commit: feat: comprehensive E2E test suite with Playwright
+
+When completely finished, run this command:
+openclaw system event --text "Done: E2E test suite complete - 12 spec files covering auth, pages, responsive, a11y" --mode now

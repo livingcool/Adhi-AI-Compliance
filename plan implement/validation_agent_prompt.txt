@@ -1,0 +1,150 @@
+You are a senior QA engineer performing rigorous production validation on Adhi Compliance.
+
+The full application has been built. Your job is to find EVERY bug, fix it, and ensure production readiness.
+
+Read COORDINATION.md, then read ALL source files.
+
+PHASE 1: STATIC ANALYSIS
+
+1. RUN BACKEND IMPORT VALIDATION:
+   cd to the backend directory.
+   Create and run a script validate_imports.py that:
+   - Imports every module in app/
+   - Imports every route file
+   - Imports every service
+   - Imports every model
+   - Prints OK or shows the exact import error with traceback
+   - Fix EVERY import error found
+
+2. RUN FRONTEND TYPE CHECK:
+   Run: npx tsc --noEmit 2>&1
+   Capture ALL TypeScript errors.
+   Fix EVERY type error found.
+
+3. RUN FRONTEND BUILD:
+   Run: npx next build 2>&1
+   Capture ALL build errors.
+   Fix EVERY build error found.
+
+4. CHECK FOR CIRCULAR IMPORTS:
+   Create a script that traces import chains in Python files.
+   Identify and break any circular dependencies.
+
+PHASE 2: RUNTIME VALIDATION
+
+5. START BACKEND AND TEST EVERY ENDPOINT:
+   Start the FastAPI server: py -m uvicorn app.main:app --port 8000
+   Then test with curl/httpx every single endpoint:
+   
+   Auth:
+   - POST /api/v1/auth/register (create test user)
+   - POST /api/v1/auth/login (get JWT)
+   - GET /api/v1/auth/me (verify JWT works)
+   
+   Company:
+   - POST /api/v1/company-profiles (create)
+   - GET /api/v1/company-profiles (list)
+   
+   AI Systems:
+   - POST /api/v1/ai-systems (create test system)
+   - GET /api/v1/ai-systems (list with pagination)
+   - GET /api/v1/ai-systems/{id} (get by id)
+   - PATCH /api/v1/ai-systems/{id} (update)
+   
+   Regulations:
+   - POST /api/v1/seed/regulations (seed the DB)
+   - GET /api/v1/regulations (list)
+   - GET /api/v1/regulations?jurisdiction=EU (filter)
+   
+   Compliance:
+   - POST /api/v1/compliance-checks (run check)
+   - GET /api/v1/compliance-checks?system_id=X (list by system)
+   - GET /api/v1/compliance-summary (summary stats)
+   
+   Dashboard:
+   - GET /api/v1/dashboard/stats
+   - GET /api/v1/dashboard/risk-distribution
+   - GET /api/v1/dashboard/recent-activity
+   
+   Incidents:
+   - POST /api/v1/incidents (create)
+   - GET /api/v1/incidents (list)
+   - PATCH /api/v1/incidents/{id} (update status)
+   - POST /api/v1/incidents/{id}/timeline (add event)
+   
+   Bias:
+   - POST /api/v1/bias-audits (create)
+   - GET /api/v1/bias-audits/{system_id}/history
+   
+   Model Cards:
+   - POST /api/v1/model-cards/{system_id}/generate
+   - GET /api/v1/model-cards/{system_id}
+   
+   Monitoring:
+   - GET /api/v1/monitoring/deadlines
+   - POST /api/v1/monitoring/scan
+   
+   Reports:
+   - GET /api/v1/reports/compliance/{org_id}
+   - GET /api/v1/reports/executive-summary/{org_id}
+   
+   Tasks:
+   - GET /api/v1/tasks/{task_id}/status
+   
+   For each endpoint, verify:
+   - Returns correct HTTP status code
+   - Response body matches expected schema
+   - Authentication is enforced (401 without token)
+   - Multi-tenancy works (can't access other org's data)
+
+6. FIX every endpoint that returns an error. Trace the error, find the root cause, fix the code.
+
+PHASE 3: SECURITY VALIDATION
+
+7. TEST AUTHENTICATION:
+   - Verify 401 on every endpoint without token
+   - Verify expired token is rejected
+   - Verify malformed token is rejected
+   - Verify token from org_A can't access org_B data
+
+8. TEST INPUT VALIDATION:
+   - Send invalid data types (string where int expected)
+   - Send empty required fields
+   - Send extremely long strings (10000 chars)
+   - Send SQL injection payloads: ' OR 1=1 --, '; DROP TABLE --
+   - Send XSS payloads: <script>alert(1)</script>
+   - Verify all are properly rejected or sanitized
+
+9. TEST RATE LIMITING / RESOURCE:
+   - Send 100 rapid requests to same endpoint
+   - Upload very large file (>100MB) to bias audit
+   - Verify server handles gracefully
+
+PHASE 4: DATA INTEGRITY
+
+10. TEST DATABASE:
+    - Create, read, update, delete for every entity type
+    - Verify cascade deletes work (delete system -> checks deleted)
+    - Verify unique constraints (duplicate email, duplicate system name per org)
+    - Verify foreign key constraints
+
+PHASE 5: FIX ALL ISSUES
+
+11. For EVERY bug found, fix it immediately.
+    Log each bug and fix in a file: VALIDATION_REPORT.md at project root.
+    Format:
+    ```
+    ## Bug #1: [description]
+    - Endpoint/File: [path]
+    - Error: [error message]
+    - Root Cause: [explanation]
+    - Fix: [what was changed]
+    - Status: FIXED
+    ```
+
+12. After fixing all bugs, re-run the full validation to confirm everything passes.
+
+Commit: fix: production validation - all endpoints tested, bugs fixed, security verified
+
+When completely finished, run this command:
+openclaw system event --text "Done: Production validation complete - all endpoints tested, all bugs fixed, security verified. See VALIDATION_REPORT.md" --mode now

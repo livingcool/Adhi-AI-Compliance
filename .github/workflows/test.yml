@@ -1,0 +1,155 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "backend/**"
+      - ".github/workflows/test.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/**"
+
+jobs:
+  test:
+    name: Run Pytest Suite
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      # Stub secrets so config.py validation passes without real keys
+      GOOGLE_API_KEY: "test-fake-google-key-for-ci"
+      SUPABASE_JWT_SECRET: "test-jwt-secret-at-least-32-chars!!"
+      SUPABASE_URL: "https://test.supabase.co"
+      SUPABASE_ANON_KEY: "test-anon-key"
+      LLM_PROVIDER: "gemini"
+      DATABASE_URL: "sqlite:///:memory:"
+
+    steps:
+      # ── Checkout ────────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Python setup ────────────────────────────────────────────────────────
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: "backend/requirements.txt"
+
+      # ── System deps (for opencv-headless, pdf2image etc.) ───────────────────
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libgl1-mesa-glx \
+            libglib2.0-0 \
+            poppler-utils
+
+      # ── Python deps ─────────────────────────────────────────────────────────
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Install only what's needed for tests (skip heavy ML deps)
+          pip install \
+            fastapi[all] \
+            uvicorn \
+            pydantic \
+            pydantic-settings \
+            python-dotenv \
+            sqlalchemy \
+            python-multipart \
+            python-jose[cryptography] \
+            PyJWT \
+            passlib[bcrypt] \
+            google-genai \
+            supabase \
+            httpx \
+            pytest \
+            pytest-asyncio \
+            pytest-cov \
+            factory-boy \
+            faker \
+            python-json-logger \
+            requests
+
+      # ── Run tests ───────────────────────────────────────────────────────────
+      - name: Run pytest with coverage
+        run: |
+          python -m pytest \
+            --cov=app \
+            --cov-report=xml:coverage.xml \
+            --cov-report=term-missing \
+            --cov-fail-under=50 \
+            -v \
+            --tb=short \
+            -x \
+            tests/
+
+        continue-on-error: false
+
+      # ── Upload coverage report ───────────────────────────────────────────────
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: backend/coverage.xml
+          flags: backend
+          name: adhi-backend-coverage
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      # ── Upload HTML coverage artifact ────────────────────────────────────────
+      - name: Upload HTML coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: backend/htmlcov/
+          retention-days: 14
+
+  # ── Security-only run (runs even if main suite fails) ────────────────────────
+  security-tests:
+    name: Security Tests
+    runs-on: ubuntu-latest
+    needs: []  # Runs independently
+
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      GOOGLE_API_KEY: "test-fake-google-key-for-ci"
+      SUPABASE_JWT_SECRET: "test-jwt-secret-at-least-32-chars!!"
+      SUPABASE_URL: "https://test.supabase.co"
+      SUPABASE_ANON_KEY: "test-anon-key"
+      LLM_PROVIDER: "gemini"
+      DATABASE_URL: "sqlite:///:memory:"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install \
+            fastapi[all] uvicorn pydantic pydantic-settings python-dotenv \
+            sqlalchemy python-multipart python-jose[cryptography] PyJWT \
+            passlib[bcrypt] google-genai supabase httpx \
+            pytest pytest-asyncio pytest-cov faker factory-boy \
+            python-json-logger requests
+
+      - name: Run security tests only
+        run: |
+          python -m pytest -m security -v --tb=short tests/test_security.py

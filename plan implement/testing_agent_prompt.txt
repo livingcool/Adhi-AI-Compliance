@@ -1,0 +1,107 @@
+You are a senior QA engineer setting up a comprehensive test suite for Adhi Compliance - an AI compliance platform built with FastAPI + SQLAlchemy.
+
+Read ALL files: app/main.py, app/store/models.py, app/api/*.py, app/services/*.py, app/config.py, requirements.txt
+
+TASKS (do ALL):
+
+1. SETUP TESTING INFRASTRUCTURE:
+   - pip install pytest pytest-asyncio httpx pytest-cov factory-boy faker
+   - Add all to requirements.txt
+   - Create tests/ directory structure:
+     tests/__init__.py
+     tests/conftest.py
+     tests/test_models.py
+     tests/test_routes_auth.py
+     tests/test_routes_ai_systems.py
+     tests/test_routes_compliance.py
+     tests/test_routes_regulations.py
+     tests/test_routes_incidents.py
+     tests/test_routes_bias.py
+     tests/test_routes_dashboard.py
+     tests/test_routes_monitoring.py
+     tests/test_routes_reports.py
+     tests/test_services_risk_classifier.py
+     tests/test_services_bias_auditor.py
+     tests/test_services_compliance_checker.py
+     tests/test_security.py
+
+2. CREATE tests/conftest.py:
+   - Use SQLite in-memory database for tests
+   - Create test database session fixture
+   - Create FastAPI TestClient fixture with dependency overrides
+   - Create mock authenticated user fixture (with org_id)
+   - Create factory classes for all models (UserFactory, AISystemFactory, RegulationFactory, etc.)
+   - Create sample data fixtures
+
+3. CREATE tests/test_models.py:
+   - Test all model creation and relationships
+   - Test all enum fields accept valid values
+   - Test UUID generation
+   - Test timestamp auto-population
+
+4. CREATE tests/test_routes_ai_systems.py:
+   - Test CRUD operations (create, read, update, delete)
+   - Test list with pagination (skip, limit)
+   - Test filtering
+   - Test 404 for non-existent system
+   - Test validation errors (missing required fields)
+
+5. CREATE tests/test_routes_compliance.py:
+   - Test creating compliance checks
+   - Test listing checks by system
+   - Test compliance summary endpoint
+   - Test status transitions
+
+6. CREATE tests/test_security.py (CRITICAL):
+   - Test that unauthenticated requests are rejected (401)
+   - Test that user from org_A cannot access org_B data (403)
+   - Test that non-admin cannot access admin endpoints
+   - Test JWT token validation
+   - Test expired token rejection
+   - Test CORS headers
+   - Test SQL injection attempts are blocked
+   - Test XSS in input fields is sanitized
+
+7. CREATE tests/test_services_risk_classifier.py:
+   - Test biometric system classified as HIGH RISK
+   - Test social scoring classified as UNACCEPTABLE
+   - Test chatbot classified as LIMITED RISK
+   - Test general software classified as MINIMAL RISK
+   - Test correct regulation mapping per jurisdiction
+
+8. CREATE tests/test_services_bias_auditor.py:
+   - Test with known biased dataset (should return FAIL)
+   - Test with balanced dataset (should return PASS)
+   - Test demographic parity calculation
+   - Test disparate impact ratio calculation
+   - Test edge cases (empty dataset, single group)
+
+9. CREATE tests/test_routes_dashboard.py:
+   - Test stats endpoint returns correct counts
+   - Test risk distribution aggregation
+   - Test recent activity ordering
+
+10. CREATE tests/test_routes_incidents.py:
+    - Test incident creation
+    - Test status workflow transitions
+    - Test timeline append
+    - Test severity filtering
+
+11. CREATE pytest.ini or pyproject.toml section:
+    - Configure pytest with asyncio mode
+    - Set test paths
+    - Configure coverage reporting
+    - Add markers for slow tests, security tests
+
+12. CREATE .github/workflows/test.yml:
+    - GitHub Actions CI pipeline
+    - Run on push/PR to main
+    - Setup Python 3.12
+    - Install deps
+    - Run pytest with coverage
+    - Upload coverage report
+
+Commit: feat: comprehensive test suite - models, routes, services, security tests + CI
+
+When completely finished, run this command:
+openclaw system event --text "Done: Testing suite complete - 12 test files, security tests, CI pipeline" --mode now

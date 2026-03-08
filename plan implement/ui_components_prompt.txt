@@ -1,0 +1,129 @@
+You are a UI/UX expert building a premium component library for Adhi Compliance - a Next.js 16 + Tailwind CSS dashboard.
+
+Read: components/*.tsx, app/globals.css, app/layout.tsx, package.json
+
+BRAND: Dark bg rgb(5,5,5), glassmorphism cards, blue rgb(59,130,246), purple rgb(168,85,247), Outfit headings, Montserrat body.
+
+Install if needed: npm install framer-motion recharts lucide-react
+
+TASKS (create ALL these components):
+
+1. CREATE components/ui/GlassCard.tsx:
+   - Glassmorphism card with backdrop-blur-xl
+   - Props: children, className, hover (boolean - adds glow effect on hover), animate (boolean - fade in)
+   - Framer Motion: initial opacity 0 y 20, animate opacity 1 y 0
+   - Hover: subtle blue border glow, slight lift
+
+2. CREATE components/ui/AnimatedCounter.tsx:
+   - Animated number that counts up from 0 to target
+   - Props: value, duration, prefix, suffix, decimals
+   - Use requestAnimationFrame for smooth animation
+   - Great for dashboard stat cards
+
+3. CREATE components/ui/CircularProgress.tsx:
+   - SVG circular progress indicator
+   - Animated stroke-dasharray using Framer Motion
+   - Color changes based on value: red (<40), yellow (40-70), green (>70)
+   - Center text showing percentage
+   - Props: value, size, strokeWidth, label
+
+4. CREATE components/ui/DataTable.tsx:
+   - Generic reusable data table component
+   - Props: columns (array of {key, header, render?}), data, loading, emptyMessage
+   - Sort by clicking column headers (with animated arrow indicator)
+   - Loading state: skeleton rows with shimmer
+   - Empty state: centered message
+   - Row hover effect (subtle glass highlight)
+   - Responsive: horizontal scroll on mobile
+
+5. CREATE components/ui/Badge.tsx:
+   - Versatile badge component
+   - Variants: risk (unacceptable/high/limited/minimal), status (compliant/non-compliant/partial/pending), severity (critical/high/medium/low)
+   - Each variant has distinct color scheme
+   - Optional pulse animation for critical items
+   - Props: variant, value, pulse, size (sm/md)
+
+6. CREATE components/ui/Modal.tsx:
+   - Accessible modal with backdrop
+   - Framer Motion: backdrop fade, content scale+fade
+   - Focus trapping
+   - Escape key to close
+   - Click outside to close
+   - role=dialog, aria-modal=true
+   - Props: isOpen, onClose, title, children, size (sm/md/lg/xl)
+
+7. CREATE components/ui/Toast.tsx:
+   - Toast notification system
+   - Types: success (green), error (red), warning (yellow), info (blue)
+   - Auto-dismiss after 5 seconds
+   - Framer Motion: slide in from right, fade out
+   - Stack multiple toasts
+   - Create useToast() hook
+   - Create ToastProvider context
+
+8. CREATE components/ui/Drawer.tsx:
+   - Slide-in drawer from right side
+   - Framer Motion: slide animation
+   - Backdrop with blur
+   - Close on escape, click outside
+   - Props: isOpen, onClose, title, children, width
+
+9. CREATE components/ui/Tabs.tsx:
+   - Animated tab component
+   - Active indicator: animated blue pill that slides between tabs
+   - Framer Motion layoutId for smooth pill animation
+   - Props: tabs (array of {id, label, content}), defaultTab
+
+10. CREATE components/ui/SearchInput.tsx:
+    - Search input with magnifying glass icon
+    - Glassmorphism styling
+    - Debounced onChange (300ms)
+    - Clear button when has text
+    - Props: placeholder, value, onChange
+
+11. CREATE components/ui/EmptyState.tsx:
+    - Centered empty state with icon, title, description, action button
+    - Subtle animation on mount
+    - Props: icon, title, description, actionLabel, onAction
+
+12. CREATE components/ui/StatCard.tsx:
+    - Dashboard stat card with glassmorphism
+    - AnimatedCounter for the value
+    - Icon, label, trend indicator (up/down with percentage)
+    - Framer Motion entrance animation
+    - Props: icon, label, value, trend, trendDirection
+
+13. CREATE components/ui/Timeline.tsx:
+    - Vertical timeline component (for incident timelines)
+    - Animated dots and lines
+    - Color-coded by event type
+    - Props: events (array of {date, title, description, type})
+
+14. CREATE components/charts/RiskDistributionChart.tsx:
+    - Donut chart using recharts
+    - Custom colors per risk tier
+    - Animated on mount
+    - Center text with total count
+    - Legend below
+
+15. CREATE components/charts/ComplianceScoreChart.tsx:
+    - Line chart showing compliance score over time
+    - Gradient fill under line (blue to transparent)
+    - Animated line drawing effect
+    - Tooltip on hover
+
+16. CREATE components/charts/RegulationCoverageChart.tsx:
+    - Horizontal bar chart showing coverage per jurisdiction
+    - Color-coded bars
+    - Labels with percentage
+
+17. CREATE components/PageTransition.tsx:
+    - Wrapper component for page transitions
+    - Framer Motion AnimatePresence
+    - Fade + slide up animation
+    - Use in layout.tsx to wrap page content
+
+Commit: feat: premium UI component library - glassmorphism, animations, charts, accessible modals
+
+When completely finished, run this command:
+openclaw system event --text "Done: UI component library complete - 17 premium components with animations" --mode now

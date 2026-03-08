@@ -1,0 +1,97 @@
+You are a senior backend architect implementing the repository pattern and advanced features for Adhi Compliance.
+
+Read ALL files: app/main.py, app/store/models.py, app/api/*.py, app/services/*.py, app/config.py
+
+TASKS (do ALL):
+
+1. IMPLEMENT REPOSITORY PATTERN:
+   Create app/repositories/ directory with:
+   
+   - app/repositories/__init__.py
+   - app/repositories/base.py:
+     * Generic BaseRepository[T] class with: get_by_id, get_all(skip, limit), create, update, delete, count
+     * All methods enforce org_id scoping
+     * Pagination built-in
+   
+   - app/repositories/ai_system_repo.py:
+     * Extends BaseRepository[AISystem]
+     * get_by_risk_tier(tier, org_id)
+     * get_compliance_score_summary(org_id)
+     * search_by_name(query, org_id)
+   
+   - app/repositories/regulation_repo.py:
+     * Extends BaseRepository[Regulation]
+     * get_by_jurisdiction(jurisdiction)
+     * get_by_category(category)
+     * search(query)
+   
+   - app/repositories/compliance_repo.py:
+     * Extends BaseRepository[ComplianceCheck]
+     * get_by_system(system_id, org_id)
+     * get_summary(org_id) - aggregated stats using SQL func.count
+     * get_upcoming_deadlines(days, org_id)
+   
+   - app/repositories/incident_repo.py:
+     * Extends BaseRepository[Incident]
+     * get_by_severity(severity, org_id)
+     * get_open_incidents(org_id)
+     * append_timeline(incident_id, event)
+   
+   - app/repositories/bias_audit_repo.py
+   - app/repositories/model_card_repo.py
+   - app/repositories/user_repo.py
+
+2. REFACTOR ALL ROUTE FILES to use repositories:
+   - Replace raw SQLAlchemy queries with repository method calls
+   - Inject repositories via FastAPI Depends
+   - This should dramatically reduce code in route files
+   - Remove duplicate CRUD patterns
+
+3. CREATE app/api/routes_regulation_mgmt.py (Regulation Management):
+   - POST /regulations/import - bulk import regulations from JSON/CSV
+   - PUT /regulations/{id} - edit regulation text, dates
+   - DELETE /regulations/{id} - soft delete
+   - POST /regulations/{id}/embed - re-embed a specific regulation
+   - Admin-only endpoints
+
+4. CREATE app/services/regulation_updater.py:
+   - Function check_for_updates() - placeholder for checking regulatory update feeds
+   - Function import_regulations_from_file(file_path) - parse JSON/CSV of regulations
+   - Function update_regulation(reg_id, updates) - update and re-embed
+
+5. CREATE app/core/exceptions.py:
+   - Custom exception classes:
+     * NotFoundError(entity_type, entity_id)
+     * UnauthorizedError(message)
+     * ForbiddenError(message)
+     * ValidationError(field, message)
+     * ConflictError(message)
+   - Register exception handlers in main.py that return proper HTTP status codes and structured error responses
+
+6. CREATE app/core/pagination.py:
+   - PaginatedResponse[T] generic model: items, total, skip, limit, has_more
+   - paginate() helper function that wraps any query with pagination
+
+7. CREATE app/services/notification_service.py:
+   - Unified notification service that combines:
+     * Email via SMTP
+     * Slack via webhook
+     * Microsoft Teams via webhook
+     * In-app notifications (stored in DB)
+   - Add Notification model to models.py: id, user_id, org_id, title, message, type, read, created_at
+   - API route: GET /notifications - list user notifications
+   - API route: PATCH /notifications/{id}/read - mark as read
+
+8. OPTIMIZE DATABASE QUERIES:
+   - Add database indexes to models.py:
+     * AISystem: index on org_id, risk_classification
+     * ComplianceCheck: index on ai_system_id, org_id, status
+     * Regulation: index on jurisdiction, category
+     * Incident: index on org_id, severity, status
+   - Add composite indexes where needed
+   - Use SQLAlchemy eager loading (joinedload) for related data in detail endpoints
+
+Commit: feat: repository pattern, custom exceptions, pagination, notifications, regulation mgmt, DB optimization
+
+When completely finished, run this command:
+openclaw system event --text "Done: Quality refactor complete - repositories, exceptions, pagination, notifications, regulation mgmt" --mode now

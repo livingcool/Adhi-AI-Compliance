@@ -1,0 +1,61 @@
+You are the integration architect for Adhi Compliance. Multiple agents have built different parts of the system in parallel. Your job is to wire everything together and ensure it all works.
+
+Read COORDINATION.md first, then read ALL files in the project.
+
+TASKS:
+
+1. RESOLVE GIT CONFLICTS:
+   - Check git status for any conflicts
+   - Merge all changes cleanly
+   - Ensure models.py has ALL models (User, CompanyProfile, AISystem, Regulation, ComplianceCheck, BiasAudit, Incident, ModelCard, AuditLog, Notification)
+   - Ensure main.py registers ALL routers and middleware
+   - Ensure requirements.txt has ALL dependencies without duplicates
+
+2. WIRE REPOSITORIES INTO ROUTES:
+   - Update all route files to use repository classes instead of raw SQLAlchemy
+   - Import from app/repositories/
+   - Inject via Depends
+
+3. WIRE UI COMPONENTS INTO PAGES:
+   - Update app/page.tsx (Dashboard) to use: StatCard, CircularProgress, RiskDistributionChart, AnimatedCounter, GlassCard
+   - Update app/systems/page.tsx to use: DataTable, Badge, SearchInput
+   - Update app/systems/[id]/page.tsx to use: GlassCard, Badge, Timeline, Tabs
+   - Update app/regulations/page.tsx to use: DataTable, Badge, SearchInput
+   - Update app/incidents/page.tsx to use: DataTable, Badge, Modal, Drawer, Timeline
+   - Update app/bias/page.tsx to use: GlassCard, CircularProgress, Badge
+   - Update app/chat/page.tsx to use: GlassCard
+   - Update app/reports/page.tsx to use: GlassCard, Toast
+   - Wrap all page content with PageTransition component
+   - Add ToastProvider to layout.tsx
+
+4. ENSURE AUTH FLOW WORKS END-TO-END:
+   - Frontend login -> POST /api/v1/auth/login -> get JWT -> store in localStorage
+   - All subsequent API calls include Authorization header
+   - AuthGuard redirects to /login if no token
+   - Backend validates JWT on every request
+   - org_id derived from JWT for all queries
+
+5. VERIFY ALL IMPORTS:
+   - No broken imports
+   - No circular dependencies
+   - No missing modules
+
+6. FIX ANY TYPE ERRORS:
+   - Run: npx tsc --noEmit (in webapp/)
+   - Fix all TypeScript errors
+
+7. TEST BUILD:
+   - Backend: python -c "from app.main import app; print('OK')"
+   - Frontend: npx next build
+   - Fix any build errors
+
+8. FINAL CLEANUP:
+   - Remove any TODO comments that were resolved
+   - Remove any console.log debugging
+   - Remove any unused imports
+   - Ensure consistent code formatting
+
+Commit: feat: integration - wire all components, resolve conflicts, verify builds
+
+When completely finished, run this command:
+openclaw system event --text "Done: Integration complete - all components wired, builds verified, ready for production" --mode now
