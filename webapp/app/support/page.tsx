@@ -21,25 +21,21 @@ import {
   Calendar
 } from 'lucide-react'
 import DashboardNavigation from '@/components/DashboardNavigation'
+import { GlassCard } from '@/components/ui/GlassCard'
 
 interface SupportCardProps { title: string; value: string; change?: string; trend?: 'up' | 'down'; icon: React.ElementType; color?: 'blue' | 'green' | 'red' | 'amber'; }
 const SupportMetricCard = ({ title, value, change, trend, icon: Icon, color = "blue" }: SupportCardProps) => (
-  <motion.div
-    initial={{ opacity: 0, scale: 0.95 }}
-    animate={{ opacity: 1, scale: 1 }}
-    className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6 
-               hover:border-white/20 transition-all duration-300 group"
-  >
+  <GlassCard className="p-6 group relative overflow-hidden">
     <div className="flex items-start justify-between mb-4">
       <div className={`p-3 rounded-xl bg-gradient-to-r ${color === 'green' ? 'from-green-500/20 to-emerald-500/20' :
-          color === 'red' ? 'from-red-500/20 to-pink-500/20' :
-            color === 'amber' ? 'from-amber-500/20 to-orange-500/20' :
-              'from-blue-500/20 to-purple-500/20'
+        color === 'red' ? 'from-red-500/20 to-pink-500/20' :
+          color === 'amber' ? 'from-amber-500/20 to-orange-500/20' :
+            'from-blue-500/20 to-purple-500/20'
         }`}>
         <Icon className={`w-6 h-6 ${color === 'green' ? 'text-green-400' :
-            color === 'red' ? 'text-red-400' :
-              color === 'amber' ? 'text-amber-400' :
-                'text-blue-400'
+          color === 'red' ? 'text-red-400' :
+            color === 'amber' ? 'text-amber-400' :
+              'text-blue-400'
           }`} />
       </div>
 
@@ -56,7 +52,7 @@ const SupportMetricCard = ({ title, value, change, trend, icon: Icon, color = "b
       <h3 className="text-white/70 text-sm font-medium">{title}</h3>
       <p className="text-3xl font-bold text-white">{value}</p>
     </div>
-  </motion.div>
+  </GlassCard>
 )
 
 const TicketList = () => {
@@ -144,11 +140,7 @@ const TicketList = () => {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6"
-    >
+    <GlassCard className="p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -191,8 +183,8 @@ const TicketList = () => {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 text-sm ${activeTab === tab.id
-                ? 'bg-blue-500/20 text-blue-400 font-medium'
-                : 'text-white/70 hover:text-white hover:bg-white/10'
+              ? 'bg-blue-500/20 text-blue-400 font-medium'
+              : 'text-white/70 hover:text-white hover:bg-white/10'
               }`}
           >
             {tab.label}
@@ -215,8 +207,8 @@ const TicketList = () => {
           >
             {/* Priority Indicator */}
             <div className={`w-3 h-3 rounded-full ${ticket.priority === 'High' ? 'bg-red-500' :
-                ticket.priority === 'Medium' ? 'bg-amber-500' :
-                  'bg-green-500'
+              ticket.priority === 'Medium' ? 'bg-amber-500' :
+                'bg-green-500'
               }`} />
 
             {/* Ticket Info */}
@@ -257,7 +249,7 @@ const TicketList = () => {
           </motion.div>
         ))}
       </div>
-    </motion.div>
+    </GlassCard>
   )
 }
 
@@ -274,11 +266,7 @@ const CustomerSatisfaction = () => {
   const averageRating = satisfactionData.reduce((sum, item) => sum + (item.rating * item.count), 0) / totalRatings
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6"
-    >
+    <GlassCard className="p-6">
       <div className="flex items-center gap-3 mb-6">
         <Star className="w-6 h-6 text-amber-400" />
         <h3 className="text-xl font-bold text-white">Customer Satisfaction</h3>
@@ -325,21 +313,13 @@ const CustomerSatisfaction = () => {
           </motion.div>
         ))}
       </div>
-    </motion.div>
+    </GlassCard>
   )
 }
 
 export default function SupportDashboard() {
   return (
-    <div className="min-h-screen bg-[rgb(5,5,5)] relative overflow-hidden">
-      {/* Background pattern */}
-      <div
-        className="absolute inset-0 opacity-20"
-        style={{
-          backgroundImage: 'radial-gradient(circle, rgba(34,197,94,0.3) 1px, transparent 1px)',
-          backgroundSize: '24px 24px'
-        }}
-      />
+    <div className="min-h-screen relative overflow-hidden">
 
       <div className="relative z-10 p-6 space-y-8">
         {/* Header */}
@@ -410,11 +390,7 @@ export default function SupportDashboard() {
             <CustomerSatisfaction />
 
             {/* Quick Stats */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6"
-            >
+            <GlassCard className="p-6">
               <h3 className="text-lg font-bold text-white mb-4">Quick Stats</h3>
               <div className="space-y-3">
                 <div className="flex justify-between">
@@ -434,7 +410,7 @@ export default function SupportDashboard() {
                   <span className="text-green-400 font-semibold">96%</span>
                 </div>
               </div>
-            </motion.div>
+            </GlassCard>
           </div>
         </div>
       </div>

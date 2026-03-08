@@ -98,13 +98,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
           <main
             id="main-content"
-            className="flex-1 overflow-y-auto dot-grid bg-radial-dark"
+            className="flex-1 overflow-y-auto mesh-bg relative"
           >
-            <AnimatePresence mode="wait">
-              <PageTransition key={pathname} className="min-h-full">
-                {children}
-              </PageTransition>
-            </AnimatePresence>
+            <div className="absolute inset-0 z-0 bg-[url('/noise.png')] opacity-20 mix-blend-overlay pointer-events-none" />
+            <div className="relative z-10 min-h-full">
+              <AnimatePresence mode="wait">
+                <PageTransition key={pathname} className="min-h-full">
+                  {children}
+                </PageTransition>
+              </AnimatePresence>
+            </div>
           </main>
         </div>
       </div>

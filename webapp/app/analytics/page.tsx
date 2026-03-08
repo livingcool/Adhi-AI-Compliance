@@ -17,6 +17,7 @@ import {
   Zap
 } from 'lucide-react'
 import DashboardNavigation from '@/components/DashboardNavigation'
+import { GlassCard } from '@/components/ui/GlassCard'
 
 // Chart components (you can integrate Chart.js, Recharts, or D3.js)
 interface MetricCardProps {
@@ -29,22 +30,17 @@ interface MetricCardProps {
 }
 
 const MetricCard = ({ title, value, change, trend, icon: Icon, color = "blue" }: MetricCardProps) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6 
-               hover:border-white/20 transition-all duration-300 group"
-  >
+  <GlassCard className="p-6">
     <div className="flex items-start justify-between mb-4">
       <div className={`p-3 rounded-xl bg-gradient-to-r ${color === 'blue' ? 'from-blue-500/20 to-purple-500/20' :
-          color === 'green' ? 'from-green-500/20 to-emerald-500/20' :
-            color === 'red' ? 'from-red-500/20 to-pink-500/20' :
-              'from-amber-500/20 to-orange-500/20'
+        color === 'green' ? 'from-green-500/20 to-emerald-500/20' :
+          color === 'red' ? 'from-red-500/20 to-pink-500/20' :
+            'from-amber-500/20 to-orange-500/20'
         }`}>
         <Icon className={`w-6 h-6 ${color === 'blue' ? 'text-blue-400' :
-            color === 'green' ? 'text-green-400' :
-              color === 'red' ? 'text-red-400' :
-                'text-amber-400'
+          color === 'green' ? 'text-green-400' :
+            color === 'red' ? 'text-red-400' :
+              'text-amber-400'
           }`} />
       </div>
       {trend && (
@@ -60,7 +56,7 @@ const MetricCard = ({ title, value, change, trend, icon: Icon, color = "blue" }:
       <h3 className="text-white/70 text-sm font-medium">{title}</h3>
       <p className="text-3xl font-bold text-white">{value}</p>
     </div>
-  </motion.div>
+  </GlassCard>
 )
 
 const ComplianceHeatmap = () => {
@@ -85,11 +81,7 @@ const ComplianceHeatmap = () => {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6"
-    >
+    <GlassCard className="p-6">
       <h3 className="text-xl font-bold text-white mb-6">Compliance Heatmap</h3>
 
       <div className="space-y-3">
@@ -132,7 +124,7 @@ const ComplianceHeatmap = () => {
           <span className="text-xs text-white/60">Non-compliant</span>
         </div>
       </div>
-    </motion.div>
+    </GlassCard>
   )
 }
 
@@ -146,11 +138,7 @@ const RealTimeActivity = () => {
   ]
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6"
-    >
+    <GlassCard className="p-6" delay={0.1}>
       <div className="flex items-center gap-2 mb-6">
         <Activity className="w-5 h-5 text-blue-400" />
         <h3 className="text-xl font-bold text-white">Real-Time Activity</h3>
@@ -167,9 +155,9 @@ const RealTimeActivity = () => {
             className="flex items-start gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors"
           >
             <div className={`w-2 h-2 rounded-full mt-2 ${activity.status === 'success' ? 'bg-green-500' :
-                activity.status === 'warning' ? 'bg-amber-500' :
-                  activity.status === 'error' ? 'bg-red-500' :
-                    'bg-blue-500'
+              activity.status === 'warning' ? 'bg-amber-500' :
+                activity.status === 'error' ? 'bg-red-500' :
+                  'bg-blue-500'
               }`}></div>
 
             <div className="flex-1 min-w-0">
@@ -179,7 +167,7 @@ const RealTimeActivity = () => {
           </motion.div>
         ))}
       </div>
-    </motion.div>
+    </GlassCard>
   )
 }
 
@@ -193,11 +181,7 @@ const RiskDistributionChart = () => {
   ]
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6"
-    >
+    <GlassCard className="p-6" delay={0.2}>
       <h3 className="text-xl font-bold text-white mb-6">AI Risk Distribution</h3>
 
       <div className="space-y-4">
@@ -228,7 +212,7 @@ const RiskDistributionChart = () => {
       <div className="mt-6 pt-4 border-t border-white/10 text-center">
         <p className="text-white/60 text-sm">Total AI Systems: 5</p>
       </div>
-    </motion.div>
+    </GlassCard>
   )
 }
 
@@ -237,15 +221,7 @@ export default function AdvancedAnalytics() {
   const [isLoading, setIsLoading] = useState(false)
 
   return (
-    <div className="min-h-screen bg-[rgb(5,5,5)] relative overflow-hidden">
-      {/* Dotted background pattern */}
-      <div
-        className="absolute inset-0 opacity-30"
-        style={{
-          backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px)',
-          backgroundSize: '24px 24px'
-        }}
-      />
+    <div className="min-h-screen relative overflow-hidden">
 
       <div className="relative z-10 p-6 space-y-8">
         {/* Header */}
@@ -339,11 +315,7 @@ export default function AdvancedAnalytics() {
 
         {/* Additional Insights */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6"
-          >
+          <GlassCard className="p-6" delay={0.3}>
             <div className="flex items-center gap-2 mb-4">
               <Globe className="w-5 h-5 text-blue-400" />
               <h3 className="text-lg font-bold text-white">Global Compliance</h3>
@@ -362,14 +334,9 @@ export default function AdvancedAnalytics() {
                 <span className="text-green-400 font-medium">95%</span>
               </div>
             </div>
-          </motion.div>
+          </GlassCard>
 
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.1 }}
-            className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6"
-          >
+          <GlassCard className="p-6" delay={0.4}>
             <div className="flex items-center gap-2 mb-4">
               <Zap className="w-5 h-5 text-purple-400" />
               <h3 className="text-lg font-bold text-white">Performance</h3>
@@ -388,14 +355,9 @@ export default function AdvancedAnalytics() {
                 <span className="text-blue-400 font-medium">96.5%</span>
               </div>
             </div>
-          </motion.div>
+          </GlassCard>
 
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 }}
-            className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6"
-          >
+          <GlassCard className="p-6" delay={0.5}>
             <div className="flex items-center gap-2 mb-4">
               <PieChart className="w-5 h-5 text-amber-400" />
               <h3 className="text-lg font-bold text-white">Trends</h3>
@@ -423,7 +385,7 @@ export default function AdvancedAnalytics() {
                 </div>
               </div>
             </div>
-          </motion.div>
+          </GlassCard>
         </div>
       </div>
     </div>

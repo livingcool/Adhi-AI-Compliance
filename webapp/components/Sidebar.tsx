@@ -16,6 +16,7 @@ import {
   LogOut,
   User,
 } from "lucide-react";
+import Image from "next/image";
 import { clearToken, getUser } from "@/lib/auth";
 
 const navItems = [
@@ -46,20 +47,17 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
   return (
     <aside className="glass-sidebar w-60 flex-shrink-0 flex flex-col h-screen" role="navigation" aria-label="Main navigation">
       {/* Logo */}
-      <div className="px-5 py-5 border-b border-white/[0.06]">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-blue-500 flex items-center justify-center glow-blue flex-shrink-0">
-            <Shield className="w-5 h-5 text-white" />
+      <div className="px-6 py-8 border-b border-white/[0.06] flex flex-col items-center justify-center relative">
+        <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 to-transparent pointer-events-none" />
+        <div className="relative z-10 font-heading font-black text-white tracking-[0.25em] text-[18px] uppercase flex flex-col items-center gap-3">
+          <div className="w-12 h-12 relative flex items-center justify-center glow-blue flex-shrink-0 animate-pulse-slow">
+            <img src="/logo.png" alt="RootedAI Logo" className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
           </div>
-          <div>
-            <p className="font-heading font-black text-white tracking-[0.25em] text-[11px] uppercase">
-              ROOTEDAI
-            </p>
-            <p className="text-[10px] text-[rgb(163,163,163)] tracking-wide mt-0.5">
-              Compliance Platform
-            </p>
-          </div>
+          ROOTEDAI
         </div>
+        <p className="text-[10px] text-[rgb(163,163,163)] tracking-widest mt-2 uppercase relative z-10 glass-pill px-2 py-0.5 rounded-full border border-white/10">
+          Adhi AI Compliance
+        </p>
       </div>
 
       {/* Navigation */}
@@ -74,11 +72,10 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
               href={href}
               onClick={onNavigate}
               aria-current={isActive ? "page" : undefined}
-              className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${
-                isActive
-                  ? "text-blue-400"
-                  : "text-[rgb(163,163,163)] hover:text-white hover:bg-white/[0.05]"
-              }`}
+              className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${isActive
+                ? "text-blue-400"
+                : "text-[rgb(163,163,163)] hover:text-white hover:bg-white/[0.05]"
+                }`}
             >
               {/* Active pill */}
               {isActive && (

@@ -20,36 +20,32 @@ import {
   Building
 } from 'lucide-react'
 import DashboardNavigation from '@/components/DashboardNavigation'
+import { GlassCard } from '@/components/ui/GlassCard'
 
 interface SalesCardProps { title: string; value: string; change?: string; trend?: 'up' | 'down'; icon: React.ElementType; color?: 'blue' | 'green' | 'red' | 'amber' | 'purple'; subtitle?: string; }
 const SalesMetricCard = ({ title, value, change, trend, icon: Icon, color = "blue", subtitle }: SalesCardProps) => (
-  <motion.div
-    initial={{ opacity: 0, scale: 0.95 }}
-    animate={{ opacity: 1, scale: 1 }}
-    className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6 
-               hover:border-white/20 transition-all duration-300 group relative overflow-hidden"
-  >
+  <GlassCard className="p-6 group relative overflow-hidden">
     {/* Background gradient */}
     <div className={`absolute inset-0 bg-gradient-to-br ${color === 'green' ? 'from-green-500/20 to-emerald-500/20' :
-        color === 'red' ? 'from-red-500/20 to-pink-500/20' :
-          color === 'amber' ? 'from-amber-500/20 to-orange-500/20' :
-            color === 'purple' ? 'from-purple-500/20 to-pink-500/20' :
-              'from-blue-500/20 to-purple-500/20'
+      color === 'red' ? 'from-red-500/20 to-pink-500/20' :
+        color === 'amber' ? 'from-amber-500/20 to-orange-500/20' :
+          color === 'purple' ? 'from-purple-500/20 to-pink-500/20' :
+            'from-blue-500/20 to-purple-500/20'
       } opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
 
     <div className="relative z-10">
       <div className="flex items-start justify-between mb-4">
         <div className={`p-3 rounded-xl bg-gradient-to-r ${color === 'green' ? 'from-green-500/20 to-emerald-500/20' :
-            color === 'red' ? 'from-red-500/20 to-pink-500/20' :
-              color === 'amber' ? 'from-amber-500/20 to-orange-500/20' :
-                color === 'purple' ? 'from-purple-500/20 to-pink-500/20' :
-                  'from-blue-500/20 to-purple-500/20'
+          color === 'red' ? 'from-red-500/20 to-pink-500/20' :
+            color === 'amber' ? 'from-amber-500/20 to-orange-500/20' :
+              color === 'purple' ? 'from-purple-500/20 to-pink-500/20' :
+                'from-blue-500/20 to-purple-500/20'
           }`}>
           <Icon className={`w-6 h-6 ${color === 'green' ? 'text-green-400' :
-              color === 'red' ? 'text-red-400' :
-                color === 'amber' ? 'text-amber-400' :
-                  color === 'purple' ? 'text-purple-400' :
-                    'text-blue-400'
+            color === 'red' ? 'text-red-400' :
+              color === 'amber' ? 'text-amber-400' :
+                color === 'purple' ? 'text-purple-400' :
+                  'text-blue-400'
             }`} />
         </div>
 
@@ -68,7 +64,7 @@ const SalesMetricCard = ({ title, value, change, trend, icon: Icon, color = "blu
         {subtitle && <p className="text-white/60 text-xs">{subtitle}</p>}
       </div>
     </div>
-  </motion.div>
+  </GlassCard>
 )
 
 const SalesPipeline = () => {
@@ -84,11 +80,7 @@ const SalesPipeline = () => {
   const conversionRate = '18%'
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6"
-    >
+    <GlassCard className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Target className="w-6 h-6 text-purple-400" />
@@ -150,7 +142,7 @@ const SalesPipeline = () => {
           <p className="text-white/60 text-sm">Avg. Deal Size</p>
         </div>
       </div>
-    </motion.div>
+    </GlassCard>
   )
 }
 
@@ -210,11 +202,7 @@ const RecentDeals = () => {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6"
-    >
+    <GlassCard className="p-6" delay={0.1}>
       <div className="flex items-center gap-3 mb-6">
         <ShoppingCart className="w-6 h-6 text-green-400" />
         <h3 className="text-2xl font-bold text-white">Recent Deals</h3>
@@ -267,7 +255,7 @@ const RecentDeals = () => {
           </motion.div>
         ))}
       </div>
-    </motion.div>
+    </GlassCard>
   )
 }
 
@@ -280,11 +268,7 @@ const SalesPerformance = () => {
   ]
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6"
-    >
+    <GlassCard className="p-6" delay={0.2}>
       <div className="flex items-center gap-3 mb-6">
         <BarChart3 className="w-6 h-6 text-blue-400" />
         <h3 className="text-xl font-bold text-white">Performance vs Target</h3>
@@ -314,14 +298,14 @@ const SalesPerformance = () => {
                   animate={{ width: `${item.progress}%` }}
                   transition={{ duration: 1, delay: index * 0.1 }}
                   className={`h-full rounded-full ${item.progress >= 90 ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
-                      item.progress >= 75 ? 'bg-gradient-to-r from-blue-500 to-purple-500' :
-                        'bg-gradient-to-r from-amber-500 to-orange-500'
+                    item.progress >= 75 ? 'bg-gradient-to-r from-blue-500 to-purple-500' :
+                      'bg-gradient-to-r from-amber-500 to-orange-500'
                     }`}
                 />
               </div>
               <span className={`text-sm font-semibold ${item.progress >= 90 ? 'text-green-400' :
-                  item.progress >= 75 ? 'text-blue-400' :
-                    'text-amber-400'
+                item.progress >= 75 ? 'text-blue-400' :
+                  'text-amber-400'
                 }`}>
                 {item.progress}%
               </span>
@@ -329,7 +313,7 @@ const SalesPerformance = () => {
           </motion.div>
         ))}
       </div>
-    </motion.div>
+    </GlassCard>
   )
 }
 
@@ -344,11 +328,7 @@ const RevenueChart = () => {
   ]
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6"
-    >
+    <GlassCard className="p-6" delay={0.3}>
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <TrendingUp className="w-6 h-6 text-green-400" />
@@ -395,21 +375,13 @@ const RevenueChart = () => {
           </motion.div>
         ))}
       </div>
-    </motion.div>
+    </GlassCard>
   )
 }
 
 export default function SalesDashboard() {
   return (
-    <div className="min-h-screen bg-[rgb(5,5,5)] relative overflow-hidden">
-      {/* Background pattern */}
-      <div
-        className="absolute inset-0 opacity-20"
-        style={{
-          backgroundImage: 'radial-gradient(circle, rgba(34,197,94,0.3) 1px, transparent 1px)',
-          backgroundSize: '28px 28px'
-        }}
-      />
+    <div className="min-h-screen relative overflow-hidden">
 
       <div className="relative z-10 p-6 space-y-8">
         {/* Header */}

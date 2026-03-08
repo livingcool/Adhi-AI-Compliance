@@ -1,45 +1,63 @@
-'use client';
+"use client";
 
-import { motion, HTMLMotionProps } from 'framer-motion';
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { motion } from "framer-motion";
+import React, { useRef, useState } from "react";
 
-interface GlassCardProps extends Omit<HTMLMotionProps<'div'>, 'animate' | 'initial'> {
+interface GlassCardProps {
   children: React.ReactNode;
   className?: string;
-  hover?: boolean;
-  animate?: boolean;
+  delay?: number;
+  interactive?: boolean;
 }
 
-export function GlassCard({
+export const GlassCard = ({
   children,
-  className,
-  hover = false,
-  animate = false,
-  ...rest
-}: GlassCardProps) {
+  className = "",
+  delay = 0,
+  interactive = true,
+}: GlassCardProps) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!ref.current || !interactive) return;
+
+    const rect = ref.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    setPosition({ x, y });
+  };
+
   return (
     <motion.div
-      initial={animate ? { opacity: 0, y: 20 } : false}
-      animate={animate ? { opacity: 1, y: 0 } : undefined}
-      transition={{ duration: 0.4, ease: 'easeOut' }}
-      whileHover={hover ? { y: -2, transition: { duration: 0.2 } } : undefined}
-      className={twMerge(
-        clsx(
-          'bg-white/[0.06] backdrop-blur-xl border border-white/[0.08] rounded-2xl',
-          'transition-colors duration-300',
-          hover && [
-            'cursor-default',
-            'hover:bg-white/[0.09]',
-            'hover:border-blue-500/40',
-            'hover:shadow-[0_0_24px_rgba(59,130,246,0.12)]',
-          ],
-          className
-        )
-      )}
-      {...rest}
+      ref={ref}
+      initial={{ opacity: 0, y: 30, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{
+        duration: 0.6,
+        delay,
+        ease: [0.23, 1, 0.32, 1]
+      }}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className={`relative overflow-hidden rounded-2xl glass-panel ${interactive ? "glass-panel-hover cursor-pointer" : ""
+        } ${className}`}
     >
-      {children}
+      {/* Dynamic Glare Effect */}
+      {interactive && isHovered && (
+        <div
+          className="pointer-events-none absolute -inset-px opacity-50 mix-blend-screen transition-opacity duration-300"
+          style={{
+            background: `radial-gradient(600px circle at ${position.x}px ${position.y}px, rgba(255,255,255,0.1), transparent 40%)`,
+          }}
+        />
+      )}
+
+      {/* Content */}
+      <div className="relative z-10 h-full">{children}</div>
     </motion.div>
   );
-}
+};

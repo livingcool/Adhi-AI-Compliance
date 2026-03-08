@@ -13,6 +13,7 @@ import {
   BarChart3,
   FileUp,
 } from "lucide-react";
+import { GlassCard } from '@/components/ui/GlassCard';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 type AuditStatus = "PASS" | "WARN" | "FAIL";
@@ -183,11 +184,11 @@ function MetricBar({ metric }: { metric: BiasMetric }) {
     metric.status === "PASS"
       ? "#22c55e"
       : metric.status === "WARN"
-      ? "#eab308"
-      : "#ef4444";
+        ? "#eab308"
+        : "#ef4444";
 
   return (
-    <div className="glass-card p-4 space-y-3">
+    <GlassCard className="p-4 space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-white">{metric.name}</p>
@@ -223,7 +224,7 @@ function MetricBar({ metric }: { metric: BiasMetric }) {
           {metric.threshold.fail}
         </span>
       </div>
-    </div>
+    </GlassCard>
   );
 }
 
@@ -240,8 +241,8 @@ export default function BiasPage() {
     ? MOCK_METRICS.some((m) => m.status === "FAIL")
       ? "FAIL"
       : MOCK_METRICS.some((m) => m.status === "WARN")
-      ? "WARN"
-      : "PASS"
+        ? "WARN"
+        : "PASS"
     : "PASS";
 
   const handleFile = (file: File) => {
@@ -284,7 +285,7 @@ export default function BiasPage() {
       {/* Setup panel */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Upload */}
-        <div className="glass-card p-5 space-y-4">
+        <GlassCard className="p-5 space-y-4">
           <div className="flex items-center gap-2">
             <FileUp className="w-4 h-4 text-blue-400" />
             <h2 className="font-heading font-semibold text-white text-sm">
@@ -300,13 +301,12 @@ export default function BiasPage() {
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
-              dragOver
+            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${dragOver
                 ? "border-blue-500/60 bg-blue-500/10"
                 : uploadedFile
-                ? "border-green-500/40 bg-green-500/05"
-                : "border-white/[0.10] hover:border-white/[0.20] hover:bg-white/[0.03]"
-            }`}
+                  ? "border-green-500/40 bg-green-500/05"
+                  : "border-white/[0.10] hover:border-white/[0.20] hover:bg-white/[0.03]"
+              }`}
           >
             <input
               ref={fileInputRef}
@@ -338,10 +338,10 @@ export default function BiasPage() {
               </div>
             )}
           </div>
-        </div>
+        </GlassCard>
 
         {/* Config */}
-        <div className="glass-card p-5 space-y-4">
+        <GlassCard className="p-5 space-y-4">
           <div className="flex items-center gap-2">
             <ScanSearch className="w-4 h-4 text-purple-400" />
             <h2 className="font-heading font-semibold text-white text-sm">
@@ -419,14 +419,14 @@ export default function BiasPage() {
               </>
             )}
           </button>
-        </div>
+        </GlassCard>
       </div>
 
       {/* Results */}
       {showResults && (
         <div className="space-y-4">
           {/* Overall result */}
-          <div className="glass-card p-5 flex items-center justify-between flex-wrap gap-4">
+          <GlassCard className="p-5 flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-yellow-500/15 border border-yellow-500/25 flex items-center justify-center">
                 <BarChart3 className="w-6 h-6 text-yellow-400" />
@@ -450,7 +450,7 @@ export default function BiasPage() {
               </p>
               <p className="text-xs text-[rgb(163,163,163)]">Fairness Score</p>
             </div>
-          </div>
+          </GlassCard>
 
           {/* Metric cards */}
           <h2 className="font-heading font-semibold text-white text-sm">
@@ -473,7 +473,7 @@ export default function BiasPage() {
           </h2>
         </div>
 
-        <div className="glass-card overflow-hidden">
+        <GlassCard className="overflow-hidden">
           <table className="w-full">
             <thead>
               <tr className="border-b border-white/[0.06]">
@@ -493,9 +493,8 @@ export default function BiasPage() {
               {HISTORICAL.map((audit, idx) => (
                 <tr
                   key={audit.id}
-                  className={`border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors ${
-                    idx === HISTORICAL.length - 1 ? "border-b-0" : ""
-                  }`}
+                  className={`border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors ${idx === HISTORICAL.length - 1 ? "border-b-0" : ""
+                    }`}
                 >
                   <td className="px-4 py-3.5">
                     <span className="text-xs font-mono text-blue-400">
@@ -525,8 +524,8 @@ export default function BiasPage() {
                           audit.score >= 80
                             ? "#22c55e"
                             : audit.score >= 60
-                            ? "#eab308"
-                            : "#ef4444",
+                              ? "#eab308"
+                              : "#ef4444",
                       }}
                     >
                       {audit.score}
@@ -539,7 +538,7 @@ export default function BiasPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </GlassCard>
       </div>
     </div>
   );

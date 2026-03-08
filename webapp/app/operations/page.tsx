@@ -25,46 +25,42 @@ import {
   Bell
 } from 'lucide-react'
 import DashboardNavigation from '@/components/DashboardNavigation'
+import { GlassCard } from '@/components/ui/GlassCard'
 
 interface OpsCardProps { title: string; value: string; change?: string; trend?: 'up' | 'down'; icon: React.ElementType; color?: 'blue' | 'green' | 'red' | 'amber' | 'purple'; status?: string; }
 const OperationsMetricCard = ({ title, value, change, trend, icon: Icon, color = "blue", status }: OpsCardProps) => (
-  <motion.div
-    initial={{ opacity: 0, scale: 0.95 }}
-    animate={{ opacity: 1, scale: 1 }}
-    className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6 
-               hover:border-white/20 transition-all duration-300 group relative overflow-hidden"
-  >
+  <GlassCard className="p-6 group relative overflow-hidden">
     {/* Status indicator */}
     {status && (
       <div className="absolute top-3 right-3">
         <div className={`w-2 h-2 rounded-full animate-pulse ${status === 'healthy' ? 'bg-green-500' :
-            status === 'warning' ? 'bg-amber-500' :
-              'bg-red-500'
+          status === 'warning' ? 'bg-amber-500' :
+            'bg-red-500'
           }`} />
       </div>
     )}
 
     {/* Background gradient */}
     <div className={`absolute inset-0 bg-gradient-to-br ${color === 'green' ? 'from-green-500/20 to-emerald-500/20' :
-        color === 'red' ? 'from-red-500/20 to-pink-500/20' :
-          color === 'amber' ? 'from-amber-500/20 to-orange-500/20' :
-            color === 'purple' ? 'from-purple-500/20 to-pink-500/20' :
-              'from-blue-500/20 to-purple-500/20'
+      color === 'red' ? 'from-red-500/20 to-pink-500/20' :
+        color === 'amber' ? 'from-amber-500/20 to-orange-500/20' :
+          color === 'purple' ? 'from-purple-500/20 to-pink-500/20' :
+            'from-blue-500/20 to-purple-500/20'
       } opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
 
     <div className="relative z-10">
       <div className="flex items-start justify-between mb-4">
         <div className={`p-3 rounded-xl bg-gradient-to-r ${color === 'green' ? 'from-green-500/20 to-emerald-500/20' :
-            color === 'red' ? 'from-red-500/20 to-pink-500/20' :
-              color === 'amber' ? 'from-amber-500/20 to-orange-500/20' :
-                color === 'purple' ? 'from-purple-500/20 to-pink-500/20' :
-                  'from-blue-500/20 to-purple-500/20'
+          color === 'red' ? 'from-red-500/20 to-pink-500/20' :
+            color === 'amber' ? 'from-amber-500/20 to-orange-500/20' :
+              color === 'purple' ? 'from-purple-500/20 to-pink-500/20' :
+                'from-blue-500/20 to-purple-500/20'
           }`}>
           <Icon className={`w-6 h-6 ${color === 'green' ? 'text-green-400' :
-              color === 'red' ? 'text-red-400' :
-                color === 'amber' ? 'text-amber-400' :
-                  color === 'purple' ? 'text-purple-400' :
-                    'text-blue-400'
+            color === 'red' ? 'text-red-400' :
+              color === 'amber' ? 'text-amber-400' :
+                color === 'purple' ? 'text-purple-400' :
+                  'text-blue-400'
             }`} />
         </div>
 
@@ -82,7 +78,7 @@ const OperationsMetricCard = ({ title, value, change, trend, icon: Icon, color =
         <p className="text-3xl font-bold text-white">{value}</p>
       </div>
     </div>
-  </motion.div>
+  </GlassCard>
 )
 
 const AutomationPerformance = () => {
@@ -139,11 +135,7 @@ const AutomationPerformance = () => {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6"
-    >
+    <GlassCard className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Zap className="w-6 h-6 text-purple-400" />
@@ -186,8 +178,8 @@ const AutomationPerformance = () => {
                 <td className="py-4 text-center text-white/80">{automation.runs.toLocaleString()}</td>
                 <td className="py-4 text-center">
                   <span className={`font-semibold ${automation.success >= 98 ? 'text-green-400' :
-                      automation.success >= 95 ? 'text-amber-400' :
-                        'text-red-400'
+                    automation.success >= 95 ? 'text-amber-400' :
+                      'text-red-400'
                     }`}>
                     {automation.success}%
                   </span>
@@ -204,7 +196,7 @@ const AutomationPerformance = () => {
           </tbody>
         </table>
       </div>
-    </motion.div>
+    </GlassCard>
   )
 }
 
@@ -239,11 +231,7 @@ const SystemHealth = () => {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6"
-    >
+    <GlassCard className="p-6">
       <div className="flex items-center gap-3 mb-6">
         <Server className="w-6 h-6 text-blue-400" />
         <h3 className="text-2xl font-bold text-white">System Health</h3>
@@ -264,8 +252,8 @@ const SystemHealth = () => {
                 <span className="text-white font-medium">{system.name}</span>
               </div>
               <span className={`text-sm font-semibold ${system.status === 'healthy' ? 'text-green-400' :
-                  system.status === 'warning' ? 'text-amber-400' :
-                    'text-red-400'
+                system.status === 'warning' ? 'text-amber-400' :
+                  'text-red-400'
                 }`}>
                 {system.status.toUpperCase()}
               </span>
@@ -281,8 +269,8 @@ const SystemHealth = () => {
                   <div className="flex-1 bg-white/10 rounded-full h-1.5">
                     <div
                       className={`h-full rounded-full ${system.cpu >= 85 ? 'bg-red-500' :
-                          system.cpu >= 70 ? 'bg-amber-500' :
-                            'bg-green-500'
+                        system.cpu >= 70 ? 'bg-amber-500' :
+                          'bg-green-500'
                         }`}
                       style={{ width: `${system.cpu}%` }}
                     />
@@ -302,8 +290,8 @@ const SystemHealth = () => {
                   <div className="flex-1 bg-white/10 rounded-full h-1.5">
                     <div
                       className={`h-full rounded-full ${system.memory >= 85 ? 'bg-red-500' :
-                          system.memory >= 70 ? 'bg-amber-500' :
-                            'bg-green-500'
+                        system.memory >= 70 ? 'bg-amber-500' :
+                          'bg-green-500'
                         }`}
                       style={{ width: `${system.memory}%` }}
                     />
@@ -323,8 +311,8 @@ const SystemHealth = () => {
                   <div className="flex-1 bg-white/10 rounded-full h-1.5">
                     <div
                       className={`h-full rounded-full ${system.disk >= 85 ? 'bg-red-500' :
-                          system.disk >= 70 ? 'bg-amber-500' :
-                            'bg-green-500'
+                        system.disk >= 70 ? 'bg-amber-500' :
+                          'bg-green-500'
                         }`}
                       style={{ width: `${system.disk}%` }}
                     />
@@ -338,7 +326,7 @@ const SystemHealth = () => {
           </motion.div>
         ))}
       </div>
-    </motion.div>
+    </GlassCard>
   )
 }
 
@@ -359,12 +347,7 @@ const OperationalMetrics = () => {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Performance Metrics */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6"
-      >
+      <GlassCard className="p-6">
         <div className="flex items-center gap-3 mb-6">
           <BarChart4 className="w-6 h-6 text-green-400" />
           <h3 className="text-xl font-bold text-white">Performance Metrics</h3>
@@ -384,15 +367,9 @@ const OperationalMetrics = () => {
             </motion.div>
           ))}
         </div>
-      </motion.div>
+      </GlassCard>
 
-      {/* Incident Overview */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.2 }}
-        className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6"
-      >
+      <GlassCard className="p-6" delay={0.2}>
         <div className="flex items-center gap-3 mb-6">
           <AlertTriangle className="w-6 h-6 text-amber-400" />
           <h3 className="text-xl font-bold text-white">Open Incidents</h3>
@@ -416,7 +393,7 @@ const OperationalMetrics = () => {
         <div className="mt-4 pt-4 border-t border-white/10 text-center">
           <p className="text-white/60 text-sm">Total Active Incidents: <span className="text-white font-semibold">19</span></p>
         </div>
-      </motion.div>
+      </GlassCard>
     </div>
   )
 }
@@ -465,12 +442,7 @@ const RecentActivity = () => {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.3 }}
-      className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6"
-    >
+    <GlassCard className="p-6" delay={0.3}>
       <div className="flex items-center gap-3 mb-6">
         <Clock className="w-6 h-6 text-blue-400" />
         <h3 className="text-2xl font-bold text-white">Recent Activity</h3>
@@ -499,21 +471,13 @@ const RecentActivity = () => {
           </motion.div>
         ))}
       </div>
-    </motion.div>
+    </GlassCard>
   )
 }
 
 export default function OperationsDashboard() {
   return (
-    <div className="min-h-screen bg-[rgb(5,5,5)] relative overflow-hidden">
-      {/* Background pattern */}
-      <div
-        className="absolute inset-0 opacity-20"
-        style={{
-          backgroundImage: 'radial-gradient(circle, rgba(139,69,19,0.3) 1px, transparent 1px)',
-          backgroundSize: '26px 26px'
-        }}
-      />
+    <div className="min-h-screen relative overflow-hidden">
 
       <div className="relative z-10 p-6 space-y-8">
         {/* Header */}

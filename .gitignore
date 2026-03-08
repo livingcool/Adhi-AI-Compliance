@@ -362,6 +362,9 @@ test.sqlite3
 # poetry.lock
 # Pipfile.lock
 
+# ==================== CONFIDENTIAL & CLASSIFIED ====================
+Classified-AWS/
+
 # ==================== WHITELIST EXCEPTIONS ====================
 # Allow certain files that might match patterns above
 !public/assets/images/*.png

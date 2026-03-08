@@ -25,17 +25,13 @@ import {
   Crown
 } from 'lucide-react'
 import DashboardNavigation from '@/components/DashboardNavigation'
+import { GlassCard } from '@/components/ui/GlassCard'
 import { useFounderAuth } from '@/lib/founder-auth'
 import { FounderProtected } from '@/components/FounderProtected'
 
 interface ExecCardProps { title: string; value: string; change?: string; trend?: 'up' | 'down'; icon: React.ElementType; color?: 'blue' | 'green' | 'red' | 'amber'; subtitle?: string; }
 const ExecutiveMetricCard = ({ title, value, change, trend, icon: Icon, color = "blue", subtitle }: ExecCardProps) => (
-  <motion.div
-    initial={{ opacity: 0, scale: 0.95 }}
-    animate={{ opacity: 1, scale: 1 }}
-    className="bg-gradient-to-br from-black/60 to-black/40 backdrop-blur-xl border border-white/10 
-               rounded-3xl p-8 hover:border-white/20 transition-all duration-500 group relative overflow-hidden"
-  >
+  <GlassCard className="p-8 group relative overflow-hidden">
     {/* Background decoration */}
     <div className={`absolute inset-0 bg-gradient-to-br ${color === 'blue' ? 'from-blue-500/10 to-purple-500/10' :
       color === 'green' ? 'from-green-500/10 to-emerald-500/10' :
@@ -72,7 +68,7 @@ const ExecutiveMetricCard = ({ title, value, change, trend, icon: Icon, color = 
         {subtitle && <p className="text-white/60 text-sm">{subtitle}</p>}
       </div>
     </div>
-  </motion.div>
+  </GlassCard>
 )
 
 const ComplianceOverview = () => {
@@ -85,11 +81,7 @@ const ComplianceOverview = () => {
   ]
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-gradient-to-br from-black/60 to-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-8"
-    >
+    <GlassCard className="p-8">
       <div className="flex items-center justify-between mb-8">
         <h3 className="text-2xl font-bold text-white">Regulatory Compliance</h3>
         <motion.button
@@ -145,7 +137,7 @@ const ComplianceOverview = () => {
           </motion.div>
         ))}
       </div>
-    </motion.div>
+    </GlassCard>
   )
 }
 
@@ -160,12 +152,7 @@ const RiskSummary = () => {
   const totalRisks = riskData.reduce((sum, item) => sum + item.count, 0)
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.2 }}
-      className="bg-gradient-to-br from-black/60 to-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-8"
-    >
+    <GlassCard className="p-8" delay={0.2}>
       <div className="flex items-center justify-between mb-8">
         <h3 className="text-2xl font-bold text-white">Risk Assessment</h3>
         <div className="text-right">
@@ -207,7 +194,7 @@ const RiskSummary = () => {
           </motion.div>
         ))}
       </div>
-    </motion.div>
+    </GlassCard>
   )
 }
 
@@ -250,12 +237,7 @@ const ExecutiveAlerts = () => {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: 0.3 }}
-      className="bg-gradient-to-br from-black/60 to-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-8"
-    >
+    <GlassCard className="p-8" delay={0.3}>
       <div className="flex items-center gap-3 mb-8">
         <Bell className="w-6 h-6 text-blue-400" />
         <h3 className="text-2xl font-bold text-white">Priority Alerts</h3>
@@ -293,7 +275,7 @@ const ExecutiveAlerts = () => {
       >
         View All Alerts
       </motion.button>
-    </motion.div>
+    </GlassCard>
   )
 }
 
@@ -306,12 +288,7 @@ const BusinessImpactSummary = () => {
   ]
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay: 0.4 }}
-      className="bg-gradient-to-br from-black/60 to-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-8"
-    >
+    <GlassCard className="p-8" delay={0.4}>
       <div className="flex items-center gap-3 mb-8">
         <Target className="w-6 h-6 text-green-400" />
         <h3 className="text-2xl font-bold text-white">Business Impact</h3>
@@ -335,7 +312,7 @@ const BusinessImpactSummary = () => {
           </motion.div>
         ))}
       </div>
-    </motion.div>
+    </GlassCard>
   )
 }
 
@@ -344,19 +321,8 @@ export default function ExecutiveDashboard() {
   const { isAuthenticated: isFounderAuth } = useFounderAuth()
 
   return (
-    <div className="min-h-screen bg-[rgb(5,5,5)] relative overflow-hidden">
-      {/* Enhanced dotted background */}
-      <div
-        className="absolute inset-0 opacity-20"
-        style={{
-          backgroundImage: 'radial-gradient(circle, rgba(59,130,246,0.3) 1px, transparent 1px)',
-          backgroundSize: '32px 32px'
-        }}
-      />
+    <div className="min-h-screen relative overflow-hidden">
 
-      {/* Gradient overlays */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-transparent to-purple-900/20" />
-      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-blue-900/10" />
 
       <div className="relative z-10 p-8 space-y-10">
         {/* Header */}

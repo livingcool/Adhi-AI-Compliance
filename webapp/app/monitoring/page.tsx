@@ -27,6 +27,7 @@ import {
   HardDrive
 } from 'lucide-react'
 import DashboardNavigation from '@/components/DashboardNavigation'
+import { GlassCard } from '@/components/ui/GlassCard'
 
 interface SystemHealthCardProps { title: string; status: string; value: string | number; unit: string; icon: React.ElementType; details?: { label: string; value: string }[]; }
 const SystemHealthCard = ({ title, status, value, unit, icon: Icon, details = [] }: SystemHealthCardProps) => {
@@ -42,12 +43,7 @@ const SystemHealthCard = ({ title, status, value, unit, icon: Icon, details = []
   const colors = getStatusColor()
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className={`${colors.bg} backdrop-blur-lg border ${colors.bg.split(' ')[1]} rounded-2xl p-6 
-                 hover:scale-105 transition-all duration-300 group cursor-pointer`}
-    >
+    <GlassCard className={`${colors.bg} border ${colors.bg.split(' ')[1]} p-6 group`}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className={`p-2 rounded-lg ${colors.bg}`}>
@@ -71,7 +67,7 @@ const SystemHealthCard = ({ title, status, value, unit, icon: Icon, details = []
           </div>
         ))}
       </div>
-    </motion.div>
+    </GlassCard>
   )
 }
 
@@ -107,7 +103,7 @@ const LiveMetricsStream = () => {
       const statuses = ['success', 'info', 'warning']
 
       const newEvent = {
-        id: metrics.length + 1,
+        id: Date.now() + Math.random(),
         timestamp: new Date().toLocaleTimeString(),
         event: events[Math.floor(Math.random() * events.length)],
         status: statuses[Math.floor(Math.random() * statuses.length)],
@@ -130,11 +126,7 @@ const LiveMetricsStream = () => {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6"
-    >
+    <GlassCard className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Waves className="w-5 h-5 text-blue-400" />
@@ -178,7 +170,7 @@ const LiveMetricsStream = () => {
           ))}
         </AnimatePresence>
       </div>
-    </motion.div>
+    </GlassCard>
   )
 }
 
@@ -210,11 +202,7 @@ const NetworkTopology = () => {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6"
-    >
+    <GlassCard className="p-6">
       <div className="flex items-center gap-3 mb-6">
         <Network className="w-5 h-5 text-blue-400" />
         <h3 className="text-xl font-bold text-white">System Topology</h3>
@@ -259,7 +247,7 @@ const NetworkTopology = () => {
           </motion.div>
         ))}
       </div>
-    </motion.div>
+    </GlassCard>
   )
 }
 
@@ -292,11 +280,7 @@ const RealTimeCharts = () => {
   }, [])
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6"
-    >
+    <GlassCard className="p-6">
       <div className="flex items-center gap-3 mb-6">
         <TrendingUp className="w-5 h-5 text-green-400" />
         <h3 className="text-xl font-bold text-white">Performance Metrics</h3>
@@ -377,7 +361,7 @@ const RealTimeCharts = () => {
         </span>
         <p className="text-white/60 text-sm">Current Performance Score</p>
       </div>
-    </motion.div>
+    </GlassCard>
   )
 }
 
@@ -405,16 +389,7 @@ export default function RealTimeMonitoring() {
   ]
 
   return (
-    <div className="min-h-screen bg-[rgb(5,5,5)] relative overflow-hidden">
-      {/* Animated background */}
-      <div
-        className="absolute inset-0 opacity-20"
-        style={{
-          backgroundImage: 'radial-gradient(circle, rgba(34,197,94,0.3) 1px, transparent 1px)',
-          backgroundSize: '28px 28px',
-          animation: 'pulse 4s ease-in-out infinite'
-        }}
-      />
+    <div className="min-h-screen relative overflow-hidden">
 
       <div className="relative z-10 p-6 space-y-8">
         {/* Header */}
@@ -493,12 +468,7 @@ export default function RealTimeMonitoring() {
         <NetworkTopology />
 
         {/* Bottom Status Panel */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="bg-black/40 backdrop-blur-lg border border-white/10 rounded-2xl p-6"
-        >
+        <GlassCard className="p-6" delay={0.5}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">
@@ -538,7 +508,7 @@ export default function RealTimeMonitoring() {
               </motion.button>
             </div>
           </div>
-        </motion.div>
+        </GlassCard>
       </div>
     </div>
   )

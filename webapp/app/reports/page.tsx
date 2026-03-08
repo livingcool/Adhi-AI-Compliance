@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Sparkles,
 } from "lucide-react";
+import { GlassCard } from '@/components/ui/GlassCard';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 type ReportStatus = "READY" | "GENERATING" | "DONE";
@@ -154,9 +155,7 @@ function ReportCard({ report }: { report: ReportType }) {
   };
 
   return (
-    <div
-      className={`glass-card p-5 border-l-4 ${report.accentBorder} flex flex-col gap-4`}
-    >
+    <GlassCard className={`p-5 border-l-4 ${report.accentBorder} flex flex-col gap-4`}>
       <div className="flex items-start gap-3">
         <div
           className={`w-10 h-10 rounded-xl ${report.iconBg} flex items-center justify-center flex-shrink-0`}
@@ -216,7 +215,7 @@ function ReportCard({ report }: { report: ReportType }) {
           </button>
         )}
       </div>
-    </div>
+    </GlassCard>
   );
 }
 
@@ -259,7 +258,7 @@ export default function ReportsPage() {
           </button>
         </div>
 
-        <div className="glass-card overflow-hidden">
+        <GlassCard className="overflow-hidden">
           <table className="w-full">
             <thead>
               <tr className="border-b border-white/[0.06]">
@@ -279,9 +278,8 @@ export default function ReportsPage() {
               {RECENT_REPORTS.map((r, idx) => (
                 <tr
                   key={r.id}
-                  className={`border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors ${
-                    idx === RECENT_REPORTS.length - 1 ? "border-b-0" : ""
-                  }`}
+                  className={`border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors ${idx === RECENT_REPORTS.length - 1 ? "border-b-0" : ""
+                    }`}
                 >
                   <td className="px-4 py-3.5">
                     <span className="text-xs font-mono text-blue-400">{r.id}</span>
@@ -324,7 +322,7 @@ export default function ReportsPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </GlassCard>
       </div>
     </div>
   );

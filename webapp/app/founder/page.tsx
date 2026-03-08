@@ -31,15 +31,11 @@ import {
 } from 'lucide-react'
 import { FounderProtected } from '@/components/FounderProtected'
 import DashboardNavigation from '@/components/DashboardNavigation'
+import { GlassCard } from '@/components/ui/GlassCard'
 
 interface FounderCardProps { title: string; value: string; change?: string; trend?: 'up' | 'down'; icon: React.ElementType; color?: 'blue' | 'green' | 'red' | 'amber' | 'purple'; sensitive?: boolean; }
 const FounderMetricCard = ({ title, value, change, trend, icon: Icon, color = "blue", sensitive = false }: FounderCardProps) => (
-  <motion.div
-    initial={{ opacity: 0, scale: 0.95 }}
-    animate={{ opacity: 1, scale: 1 }}
-    className="bg-gradient-to-br from-black/80 to-black/60 backdrop-blur-xl border border-white/20 
-               rounded-3xl p-6 hover:border-white/30 transition-all duration-500 group relative overflow-hidden"
-  >
+  <GlassCard className="p-6 group relative overflow-hidden">
     {/* Sensitive data indicator */}
     {sensitive && (
       <div className="absolute top-3 right-3">
@@ -82,7 +78,7 @@ const FounderMetricCard = ({ title, value, change, trend, icon: Icon, color = "b
         <p className="text-3xl font-bold text-white">{value}</p>
       </div>
     </div>
-  </motion.div>
+  </GlassCard>
 )
 
 const ClientPortfolio = () => {
@@ -114,11 +110,7 @@ const ClientPortfolio = () => {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-gradient-to-br from-black/80 to-black/60 backdrop-blur-xl border border-white/20 rounded-3xl p-6"
-    >
+    <GlassCard className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Building2 className="w-6 h-6 text-blue-400" />
@@ -175,7 +167,7 @@ const ClientPortfolio = () => {
           </tbody>
         </table>
       </div>
-    </motion.div>
+    </GlassCard>
   )
 }
 
@@ -201,11 +193,7 @@ const FinancialBreakdown = () => {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      className="bg-gradient-to-br from-black/80 to-black/60 backdrop-blur-xl border border-white/20 rounded-3xl p-6"
-    >
+    <GlassCard className="p-6">
       <div className="flex items-center gap-3 mb-6">
         <DollarSign className="w-6 h-6 text-green-400" />
         <h3 className="text-2xl font-bold text-white">Financial Overview</h3>
@@ -282,7 +270,7 @@ const FinancialBreakdown = () => {
           </div>
         </div>
       </div>
-    </motion.div>
+    </GlassCard>
   )
 }
 
@@ -312,11 +300,7 @@ const TeamAndOperations = () => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Team Structure */}
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="bg-gradient-to-br from-black/80 to-black/60 backdrop-blur-xl border border-white/20 rounded-3xl p-6"
-      >
+      <GlassCard className="p-6">
         <div className="flex items-center gap-3 mb-6">
           <Users className="w-6 h-6 text-purple-400" />
           <h3 className="text-2xl font-bold text-white">Team & Hiring</h3>
@@ -349,14 +333,10 @@ const TeamAndOperations = () => {
             </motion.div>
           ))}
         </div>
-      </motion.div>
+      </GlassCard>
 
       {/* Operations */}
-      <motion.div
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="bg-gradient-to-br from-black/80 to-black/60 backdrop-blur-xl border border-white/20 rounded-3xl p-6"
-      >
+      <GlassCard className="p-6">
         <div className="flex items-center gap-3 mb-6">
           <Activity className="w-6 h-6 text-amber-400" />
           <h3 className="text-2xl font-bold text-white">Operations</h3>
@@ -409,7 +389,7 @@ const TeamAndOperations = () => {
             </div>
           </div>
         </div>
-      </motion.div>
+      </GlassCard>
     </div>
   )
 }
@@ -489,12 +469,7 @@ const FounderDashboardContent = () => {
       <TeamAndOperations />
 
       {/* Action Items */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        className="bg-gradient-to-br from-red-500/20 to-pink-500/20 backdrop-blur-xl border border-red-500/30 rounded-3xl p-8"
-      >
+      <GlassCard className="p-8" delay={0.5}>
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-3 mb-4">
@@ -522,22 +497,14 @@ const FounderDashboardContent = () => {
             </motion.button>
           </div>
         </div>
-      </motion.div>
+      </GlassCard>
     </div>
   )
 }
 
 export default function FounderDashboard() {
   return (
-    <div className="min-h-screen bg-[rgb(5,5,5)] relative overflow-hidden">
-      {/* Enhanced background pattern */}
-      <div
-        className="absolute inset-0 opacity-20"
-        style={{
-          backgroundImage: 'radial-gradient(circle, rgba(245,158,11,0.3) 1px, transparent 1px)',
-          backgroundSize: '32px 32px'
-        }}
-      />
+    <div className="min-h-screen relative overflow-hidden">
 
       <div className="relative z-10 p-6 space-y-8">
         {/* Dashboard Navigation */}
