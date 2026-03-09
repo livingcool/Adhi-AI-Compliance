@@ -24,10 +24,22 @@ def list_regulations(
     current_user: CurrentUser = Depends(get_current_user),
     repo: RegulationRepository = Depends(_get_repo),
 ) -> Dict[str, Any]:
+    from app.services.web_search import get_live_regulations
+    
     items = repo.search(query=search, jurisdiction=jurisdiction, category=category)
     total = len(items)
     page_items = items[skip : skip + limit]
-    return {"items": [RegulationResponse.model_validate(i) for i in page_items], "total": total, "skip": skip, "limit": limit}
+    
+    # Execute Live Internet Search
+    live_items = []
+    if skip == 0 and not search:
+        try:
+            live_items = get_live_regulations()
+        except Exception:
+            pass
+
+    db_items = [RegulationResponse.model_validate(i).model_dump() for i in page_items]
+    return {"items": live_items + db_items, "total": total + len(live_items), "skip": skip, "limit": limit}
 
 
 @router.get("/regulations/{regulation_id}", response_model=RegulationResponse)

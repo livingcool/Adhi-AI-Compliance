@@ -51,3 +51,4 @@ sentry-sdk[fastapi]>=2.3.0
 python-jose[cryptography]>=3.3.0
 PyJWT>=2.8.0
 passlib[bcrypt]>=1.7.4
+duckduckgo-search>=5.0.0

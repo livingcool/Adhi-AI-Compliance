@@ -60,14 +60,38 @@ class BedrockAnswerGenerator:
         """Generates a grounded RAG answer via Claude on Bedrock."""
         from app.services.usage_logger import log_ai_usage
 
-        if not chunks:
+        context_string = ""
+        if chunks:
+            context_string = format_to_toon(chunks)
+            
+        # Add Live Internet Context
+        try:
+            from app.services.web_search import search_internet_snippets
+            live_snippets = search_internet_snippets(query, max_results=4)
+            if live_snippets:
+                context_string += "\n\n--- LIVE INTERNET SEARCH RESULTS ---\n"
+                context_string += "Use these real-time internet results to answer if they are relevant:\n"
+                for snip in live_snippets:
+                    context_string += f"Source: {snip['title']} ({snip['link']})\nSnippet: {snip['snippet']}\n\n"
+                    
+                    # Add as a pseudo-source for the frontend citation
+                    chunks.append(
+                        SourceChunk(
+                            text=snip['snippet'],
+                            metadata={"document_name": snip['title'], "source_type": "web", "url": snip['link']},
+                            score=0.99
+                        )
+                    )
+        except Exception as e:
+            logger.warning("live_search_failed", extra={"error": str(e)})
+
+        if not chunks and not context_string.strip():
             return QueryResponse(
-                answer="I cannot answer this question because no relevant content was found.",
+                answer="I cannot answer this question because no relevant database content or web search results were found.",
                 sources=[],
                 query_id=query_id,
             )
 
-        context_string = format_to_toon(chunks)
         final_prompt = RAG_PROMPT_TEMPLATE.format(context=context_string, query=query)
 
         # Bedrock Messages API (Claude)
