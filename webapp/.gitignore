@@ -13,3 +13,4 @@ __pycache__/
 
 # --- Ignore the misidentified ffmpeg binary directory ---
 ffmpeg
+.vercel
