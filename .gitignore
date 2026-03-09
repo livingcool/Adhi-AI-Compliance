@@ -305,6 +305,7 @@ docker-compose.override.yml
 # Deployment
 .deployment
 deploy.sh
+backend/scripts/*.sh
 deployment-config.json
 
 # Terraform
